@@ -3,7 +3,6 @@
     "target": "ES2024",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
@@ -11,9 +10,9 @@
     "resolveJsonModule": true,
     "types": ["node"],
     "paths": {
-      "@/*": ["./src/*", "./tests/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*", "./tests/*"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist"]
 }
