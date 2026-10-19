@@ -62,3 +62,46 @@ jobs:
 
       - name: Build
         run: npm run build
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+          POSTGRES_DB: searchy_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run DB Migrations
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/searchy_test
+          JWT_SECRET: test_secret_for_ci
+        run: npm run db:migrate
+
+      - name: Run Tests
+        env:
+          DATABASE_URL: postgres://postgres:${{ secrets.TEST_DB_PASSWORD }}@localhost:5432/searchy_test
+          JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+        run: npm run test
