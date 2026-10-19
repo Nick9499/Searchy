@@ -1,16 +1,16 @@
-import { env } from "@/config/env";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import { AuthRequest } from "@/middlewares/auth.middleware";
-import {
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { env } from '@/config/env';
+import { db } from '@/db';
+import { users } from '@/db/schema';
+import type { AuthRequest } from '@/middlewares/auth.middleware';
+import type {
   LoginInput,
   SignupInput,
   UpdateUserInput,
-} from "@/validators/user.validator";
-import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
-import { Request, Response } from "express";
-import jwt from "jsonwebtoken";
+} from '@/validators/user.validator';
+import { eq } from 'drizzle-orm';
+import type { Request, Response } from 'express';
 
 export const signup = async (req: Request, res: Response) => {
   const body = req.body as SignupInput;
@@ -21,7 +21,7 @@ export const signup = async (req: Request, res: Response) => {
     .where(eq(users.email, body.email));
 
   if (existing.length > 0) {
-    res.status(409).json({ message: "Email already in use" });
+    res.status(409).json({ message: 'Email already in use' });
     return;
   }
 
@@ -36,7 +36,7 @@ export const signup = async (req: Request, res: Response) => {
     })
     .returning();
 
-  res.status(201).json({ message: "Account created", userId: user.id });
+  res.status(201).json({ message: 'Account created', userId: user.id });
 };
 
 export const login = async (req: Request, res: Response) => {
@@ -48,19 +48,19 @@ export const login = async (req: Request, res: Response) => {
     .where(eq(users.email, body.email));
 
   if (!user) {
-    res.status(401).json({ message: "Invalid Credentials" });
+    res.status(401).json({ message: 'Invalid Credentials' });
     return;
   }
 
   const isMatch = await bcrypt.compare(body.password, user.password);
 
   if (!isMatch) {
-    res.status(401).json({ message: "Invalid Credentials" });
+    res.status(401).json({ message: 'Invalid Credentials' });
     return;
   }
 
   const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
-    expiresIn: "7d",
+    expiresIn: '7d',
   });
 
   res.json({ token });
@@ -78,7 +78,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
     .where(eq(users.id, req.userId!));
 
   if (!user) {
-    res.status(401).json({ message: "User not found" });
+    res.status(401).json({ message: 'User not found' });
     return;
   }
 
@@ -95,7 +95,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       .where(eq(users.email, body.email));
 
     if (existing && existing.id !== req.userId) {
-      res.status(409).json({ message: "Email already in use" });
+      res.status(409).json({ message: 'Email already in use' });
       return;
     }
   }
@@ -111,5 +111,5 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
 
 export const deleteUser = async (req: AuthRequest, res: Response) => {
   await db.delete(users).where(eq(users.id, req.userId!));
-  res.json({ message: "Account deleted" });
+  res.json({ message: 'Account deleted' });
 };
