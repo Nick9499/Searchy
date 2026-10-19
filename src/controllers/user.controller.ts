@@ -67,6 +67,11 @@ export const login = async (req: Request, res: Response) => {
 };
 
 export const getMe = async (req: AuthRequest, res: Response) => {
+  if (!req.userId) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
   const [user] = await db
     .select({
       id: users.id,
@@ -75,7 +80,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
       createdAt: users.createdAt,
     })
     .from(users)
-    .where(eq(users.id, req.userId!));
+    .where(eq(users.id, req.userId));
 
   if (!user) {
     res.status(401).json({ message: 'User not found' });
@@ -86,6 +91,11 @@ export const getMe = async (req: AuthRequest, res: Response) => {
 };
 
 export const updateUser = async (req: AuthRequest, res: Response) => {
+  if (!req.userId) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
   const body = req.body as UpdateUserInput;
 
   if (body.email) {
@@ -103,13 +113,18 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
   const [updated] = await db
     .update(users)
     .set({ ...body, updatedAt: new Date() })
-    .where(eq(users.id, req.userId!))
+    .where(eq(users.id, req.userId))
     .returning();
 
   res.json({ user: updated });
 };
 
 export const deleteUser = async (req: AuthRequest, res: Response) => {
-  await db.delete(users).where(eq(users.id, req.userId!));
+  if (!req.userId) {
+    res.status(401).json({ message: 'Unauthorized' });
+    return;
+  }
+
+  await db.delete(users).where(eq(users.id, req.userId));
   res.json({ message: 'Account deleted' });
 };
