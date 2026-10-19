@@ -31,7 +31,7 @@ export const signup = async (req: Request, res: Response) => {
     .insert(users)
     .values({
       name: body.name,
-      email: body.name,
+      email: body.email,
       password: hashedPassword,
     })
     .returning();
