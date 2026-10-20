@@ -5,6 +5,10 @@ import { eq } from 'drizzle-orm';
 import request from 'supertest';
 import app from '@/app';
 
+vi.mock('@/utils/email', () => ({
+  sendEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('@/utils/otp', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/utils/otp')>();
   return {
