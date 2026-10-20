@@ -134,7 +134,7 @@ export const login = async (req: Request, res: Response) => {
     res.status(403).json({
       message:
         'Account not verified. A new verification code has been sent to your email',
-      requiredVerification: true,
+      requiresVerification: true,
     });
     return;
   }
