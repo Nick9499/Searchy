@@ -48,7 +48,7 @@ export const createAndSendOtp = async (email: string, purpose: OtpPurpose) => {
 export const validateOtp = async (
   email: string,
   code: string,
-  purpose: string,
+  purpose: OtpPurpose,
 ): Promise<boolean> => {
   const [record] = await db
     .select()
@@ -56,7 +56,7 @@ export const validateOtp = async (
     .where(
       and(
         eq(otps.email, email),
-        eq(otps.code, code),
+        eq(otps.purpose, purpose),
         gt(otps.expiresAt, new Date()),
       ),
     );
