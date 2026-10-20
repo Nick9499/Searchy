@@ -96,7 +96,7 @@ jobs:
 
       - name: Run DB Migrations
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/searchy_test
+          DATABASE_URL: postgres://postgres:${{ secrets.TEST_DB_PASSWORD }}@localhost:5432/searchy_test
           JWT_SECRET: test_secret_for_ci
         run: npm run db:migrate
 
