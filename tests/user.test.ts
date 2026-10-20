@@ -36,7 +36,7 @@ const TEST_OTP = '123456';
 
 // --- Shared state between tests ---
 let authToken = '';
-let userId = '';
+let _userId = '';
 
 describe('User Auth & Account Management', () => {
   const cleanup = async () => {
@@ -66,7 +66,7 @@ describe('User Auth & Account Management', () => {
       expect(res.status).toBe(201);
       expect(res.body).toHaveProperty('userId');
       expect(res.body.message).toContain('verify your email');
-      userId = res.body.userId;
+      _userId = res.body.userId;
     });
 
     it('should reject duplicate email (409)', async () => {

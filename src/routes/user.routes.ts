@@ -23,16 +23,32 @@ import {
   updateUserSchema,
   verifyOtpSchema,
 } from '@/validators/user.validator';
+import { authLimiter } from '@/middlewares/rateLimiter.middleware';
 
 const router = Router();
 
-router.post('/signup', validate(signupSchema), signup);
-router.post('/login', validate(loginSchema), login);
-router.post('/verify-otp', validate(verifyOtpSchema), verifyUserOtp);
-router.post('/resend-otp', validate(resendOtpSchema), resendOtp);
-router.post('/forgot-password', validate(forgotPasswordSchema), forgotPassword);
-router.post('/reset-password', validate(resetPasswordSchema), resetPassword);
-router.post('/google', validate(googleAuthSchema), googleSignIn);
+router.post('/signup', authLimiter, validate(signupSchema), signup);
+router.post('/login', authLimiter, validate(loginSchema), login);
+router.post(
+  '/verify-otp',
+  authLimiter,
+  validate(verifyOtpSchema),
+  verifyUserOtp,
+);
+router.post('/resend-otp', authLimiter, validate(resendOtpSchema), resendOtp);
+router.post(
+  '/forgot-password',
+  authLimiter,
+  validate(forgotPasswordSchema),
+  forgotPassword,
+);
+router.post(
+  '/reset-password',
+  authLimiter,
+  validate(resetPasswordSchema),
+  resetPassword,
+);
+router.post('/google', authLimiter, validate(googleAuthSchema), googleSignIn);
 
 router.get('/me', authenticate, getMe);
 router.patch('/me', authenticate, validate(updateUserSchema), updateUser);
