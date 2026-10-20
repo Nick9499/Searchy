@@ -1,5 +1,6 @@
 import {
   boolean,
+  integer,
   pgEnum,
   pgTable,
   text,
@@ -32,4 +33,31 @@ export const otps = pgTable('otps', {
   purpose: otpPurposeEnum('purpose').notNull(),
   expiresAt: timestamp('expired_at').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const folders = pgTable('folders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  parentId: uuid('parent_id'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
+export const files = pgTable('files', {
+  id: uuid('id').notNull().primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  storageKey: text('storage_key').notNull().unique(),
+  size: integer('size').notNull(),
+  mimeType: text('mime_type').notNull(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  folderid: uuid('folder_id').references(() => folders.id, {
+    onDelete: 'cascade',
+  }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
