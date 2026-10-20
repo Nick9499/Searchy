@@ -3,13 +3,24 @@ services:
     image: postgres:17
     restart: always
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: searchy
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-searchy}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+  localstack:
+    image: localstack/localstack:latest
+    restart: always
+    ports:
+      - "4566:4566"
+    environment:
+      SERVICES: s3
+      AWS_DEFAULT_REGION: us-east-1
+    volumes:
+      - localstack_data:/var/lib/localstack
 
 volumes:
   pgdata:
+  localstack_data:
