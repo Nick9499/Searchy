@@ -10,17 +10,13 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-  localstack:
-    image: localstack/localstack:latest
+  s3mock:
+    image: adobe/s3mock:latest
     restart: always
-    ports:
-      - "4566:4566"
     environment:
-      SERVICES: s3
-      AWS_DEFAULT_REGION: us-east-1
-    volumes:
-      - localstack_data:/var/lib/localstack
+      initialBuckets: searchy-files
+    ports:
+      - "9090:9090"
 
 volumes:
   pgdata:
-  localstack_data:
