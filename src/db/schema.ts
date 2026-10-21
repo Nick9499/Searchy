@@ -55,7 +55,7 @@ export const files = pgTable('files', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  folderid: uuid('folder_id').references(() => folders.id, {
+  folderId: uuid('folder_id').references(() => folders.id, {
     onDelete: 'cascade',
   }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
