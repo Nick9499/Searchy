@@ -21,6 +21,9 @@ const envSchema = z.object({
   S3_ACCESS_KEY: z.string().default('test'),
   S3_SECRET_KEY: z.string().default('test'),
   S3_BUCKET_NAME: z.string().default('searchy-files'),
+
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z.coerce.number().default(6379),
 });
 
 export const env = envSchema.parse(process.env);

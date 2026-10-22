@@ -6,7 +6,7 @@ import type {
   CreateFolderInput,
   UpdateFolderInput,
 } from '@/validators/storage.validator';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Response } from 'express';
 
 export const createFolder = async (req: AuthRequest, res: Response) => {
@@ -50,7 +50,13 @@ export const getFolders = async (req: AuthRequest, res: Response) => {
   const userFolder = await db
     .select()
     .from(folders)
-    .where(eq(folders.userId, req.userId));
+    .where(
+      and(
+        eq(folders.userId, req.userId),
+        isNull(folders.deletedAt),
+        isNull(folders.parentId),
+      ),
+    );
 
   res.json({ folders: userFolder });
 };
@@ -61,12 +67,18 @@ export const getFolderContents = async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  const id = String(req.params.id);
+  const folderId = String(req.params.id);
 
   const [folder] = await db
     .select()
     .from(folders)
-    .where(and(eq(folders.id, id), eq(folders.userId, req.userId)));
+    .where(
+      and(
+        eq(folders.id, folderId),
+        eq(folders.userId, req.userId),
+        isNull(folders.deletedAt),
+      ),
+    );
 
   if (!folder) {
     res.status(404).json({ message: 'Folder not found' });
@@ -76,12 +88,24 @@ export const getFolderContents = async (req: AuthRequest, res: Response) => {
   const subFolder = await db
     .select()
     .from(folders)
-    .where(and(eq(folders.parentId, id), eq(folders.userId, req.userId)));
+    .where(
+      and(
+        eq(folders.parentId, folderId),
+        eq(folders.userId, req.userId),
+        isNull(folders.deletedAt),
+      ),
+    );
 
   const folderFiles = await db
     .select()
     .from(files)
-    .where(and(eq(files.folderId, id), eq(files.userId, req.userId)));
+    .where(
+      and(
+        eq(files.folderId, folderId),
+        eq(files.userId, req.userId),
+        isNull(files.deletedAt),
+      ),
+    );
 
   res.json({
     folder,
@@ -105,7 +129,13 @@ export const updateFolder = async (req: AuthRequest, res: Response) => {
       name,
       updatedAt: new Date(),
     })
-    .where(and(eq(folders.id, id), eq(folders.userId, req.userId)))
+    .where(
+      and(
+        eq(folders.id, id),
+        eq(folders.userId, req.userId),
+        isNull(folders.deletedAt),
+      ),
+    )
     .returning();
 
   if (!updated) {
@@ -122,24 +152,56 @@ export const deleteFolder = async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  const id = String(req.params.id);
+  const folderId = String(req.params.id);
 
-  const filesToDelete = await db
+  const [folder] = await db
     .select()
-    .from(files)
-    .where(and(eq(files.folderId, id), eq(files.userId, req.userId)));
+    .from(folders)
+    .where(
+      and(
+        eq(folders.id, folderId),
+        eq(folders.userId, req.userId),
+        isNull(folders.deletedAt),
+      ),
+    );
 
-  await Promise.all(filesToDelete.map((f) => deleteFromS3(f.storageKey)));
-
-  const [deleted] = await db
-    .delete(folders)
-    .where(and(eq(folders.id, id), eq(folders.userId, req.userId)))
-    .returning();
-
-  if (!deleted) {
+  if (!folder) {
     res.status(404).json({ message: 'Folder not found' });
     return;
   }
 
-  res.json({ message: 'Folders and its content deleted successfully' });
+  const allFolderIds: string[] = [folderId];
+  let currentParentIds = [folderId];
+
+  while (currentParentIds.length > 0) {
+    const subFolders = await db
+      .select({ id: folders.id })
+      .from(folders)
+      .where(
+        and(
+          isNull(folders.deletedAt),
+          inArray(folders.parentId, currentParentIds),
+        ),
+      );
+
+    if (subFolders.length === 0) break;
+
+    const subIds = subFolders.map((f) => f.id);
+    allFolderIds.push(...subIds);
+    currentParentIds = subIds;
+  }
+
+  const now = new Date();
+
+  await db
+    .update(files)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(and(isNull(files.deletedAt), inArray(files.folderId, allFolderIds)));
+
+  await db
+    .update(folders)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(inArray(folders.id, allFolderIds));
+
+  res.json({ message: 'Folders and its content moved to trash' });
 };

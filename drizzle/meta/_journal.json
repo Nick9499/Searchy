@@ -29,6 +29,13 @@
       "when": 1792520971417,
       "tag": "0003_quick_mandroid",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792688961812,
+      "tag": "0004_vengeful_mentallo",
+      "breakpoints": true
     }
   ]
 }

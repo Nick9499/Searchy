@@ -70,7 +70,13 @@ export const getRootFiles = async (req: AuthRequest, res: Response) => {
   const rootFiles = await db
     .select()
     .from(files)
-    .where(and(eq(files.userId, req.userId), isNull(files.folderId)));
+    .where(
+      and(
+        eq(files.userId, req.userId),
+        isNull(files.folderId),
+        isNull(files.deletedAt),
+      ),
+    );
 
   res.json({ files: rootFiles });
 };
@@ -88,7 +94,13 @@ export const getFileDownloadUrl = async (req: AuthRequest, res: Response) => {
   const [file] = await db
     .select()
     .from(files)
-    .where(and(eq(files.id, id), eq(files.userId, req.userId)));
+    .where(
+      and(
+        eq(files.id, id),
+        eq(files.userId, req.userId),
+        isNull(files.deletedAt),
+      ),
+    );
 
   if (!file) {
     res.status(404).json({ message: 'File not found' });
@@ -106,23 +118,30 @@ export const deleteFile = async (req: AuthRequest, res: Response) => {
     return;
   }
 
-  const id = String(req.params.id);
+  const fileId = String(req.params.id);
 
   const [file] = await db
     .select()
     .from(files)
-    .where(and(eq(files.id, id), eq(files.userId, req.userId)));
+    .where(
+      and(
+        eq(files.id, fileId),
+        eq(files.userId, req.userId),
+        isNull(files.deletedAt),
+      ),
+    );
 
   if (!file) {
     res.status(404).json({ message: 'File not found' });
     return;
   }
 
-  await deleteFromS3(file.storageKey);
+  await db
+    .update(files)
+    .set({ deletedAt: new Date(), updatedAt: new Date() })
+    .where(eq(files.id, fileId));
 
-  await db.delete(files).where(eq(files.id, file.id));
-
-  res.json({ message: 'File deleted successfully' });
+  res.json({ message: 'File moved to trash' });
 };
 
 export const searchFiles = async (req: AuthRequest, res: Response) => {
@@ -142,7 +161,13 @@ export const searchFiles = async (req: AuthRequest, res: Response) => {
   const matchedFiles = await db
     .select()
     .from(files)
-    .where(and(eq(files.userId, req.userId), ilike(files.name, `%${query}%`)));
+    .where(
+      and(
+        eq(files.userId, req.userId),
+        ilike(files.name, `%${query}%`),
+        isNull(files.deletedAt),
+      ),
+    );
 
   res.json({ files: matchedFiles, count: matchedFiles.length });
 };
