@@ -2,6 +2,7 @@ import express from 'express';
 import userRouter from '@/routes/user.routes';
 import folderRouter from '@/routes/folder.routes';
 import fileRouter from '@/routes/file.routes';
+import trashRouter from '@/routes/trash.routes';
 import { apiLimiter } from '@/middlewares/rateLimiter.middleware';
 import { ensureBucketExists } from './services/storage.service';
 
@@ -22,5 +23,6 @@ app.get('/health', (_req, res) => {
 app.use('/api/users', userRouter);
 app.use('/api/folders', folderRouter);
 app.use('/api/files', fileRouter);
+app.use('/api/trash', trashRouter);
 
 export default app;

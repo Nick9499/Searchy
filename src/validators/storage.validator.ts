@@ -19,7 +19,15 @@ export const searchFilesSchema = z.object({
   mimeType: z.string().optional(),
 });
 
+export const restoreTrashSchema = z.object({
+  id: z.uuid('Inavlid item ID'),
+  type: z.enum(['file', 'folder'], {
+    error: 'Type must be either file or folder',
+  }),
+});
+
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type UpdateFolderInput = z.infer<typeof updateFolderSchema>;
 export type UploadFileInput = z.infer<typeof uploadFileSchema>;
 export type SearchFilesInput = z.infer<typeof searchFilesSchema>;
+export type RestoreTrashInput = z.infer<typeof restoreTrashSchema>;
