@@ -1,0 +1,23 @@
+meta {
+  name: Google Sign-in
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/users/google
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "idToken": "google_id_token_here"
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.token) {
+    bru.setEnvVar("token", res.body.token);
+  }
+}

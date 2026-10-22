@@ -14,9 +14,30 @@ services:
     image: adobe/s3mock:latest
     restart: always
     environment:
-      initialBuckets: searchy-files
+      COM_ADOBE_TESTING_S3MOCK_STORE_INITIAL_BUCKETS: searchy-files
+      COM_ADOBE_TESTING_S3MOCK_STORE_RETAIN_FILES_ON_EXIT: "true"
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3mockroot
     ports:
       - "9090:9090"
+    volumes:
+      - s3data:/s3mockroot
+
+  s3manager:
+    image: cloudlena/s3manager:latest
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      ENDPOINT: s3mock:9090
+      USE_SSL: "false"
+      REGION: us-east-1
+      ACCESS_KEY_ID: dummy
+      SECRET_ACCESS_KEY: dummy
+      ALLOW_DELETE: "true"
+      FORCE_PATH_STYLE: "true"
+    depends_on:
+      - s3mock
 
 volumes:
   pgdata:
+  s3data:

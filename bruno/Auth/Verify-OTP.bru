@@ -1,0 +1,25 @@
+meta {
+  name: Verify OTP
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/users/verify-otp
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "sarkarsubhajit9499@gmail.com",
+    "code": "177114",
+    "purpose": "VERIFY_EMAIL"
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.token) {
+    bru.setEnvVar("token", res.body.token);
+  }
+}

@@ -1,0 +1,15 @@
+meta {
+  name: Delete Folder
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/folders/FOLDER_ID_HERE
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

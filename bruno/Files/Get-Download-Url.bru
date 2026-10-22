@@ -1,0 +1,15 @@
+meta {
+  name: Get Download Presigned URL
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/files/FILE_ID_HERE/download
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

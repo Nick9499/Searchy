@@ -1,0 +1,15 @@
+meta {
+  name: List Root Folders
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/folders
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
