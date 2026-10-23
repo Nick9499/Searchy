@@ -1,0 +1,15 @@
+meta {
+  name: Empty Trash
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/api/trash
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,7 +1,6 @@
 import { db } from '@/db';
 import { files, folders } from '@/db/schema';
 import type { AuthRequest } from '@/middlewares/auth.middleware';
-import { deleteFromS3 } from '@/services/storage.service';
 import type {
   CreateFolderInput,
   UpdateFolderInput,

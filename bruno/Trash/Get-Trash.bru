@@ -1,0 +1,15 @@
+meta {
+  name: Get Trash
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/trash
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

@@ -1,0 +1,22 @@
+meta {
+  name: Restore Item
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/trash/restore
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "id": "ITEM_UUID_HERE",
+    "type": "file"
+  }
+}
