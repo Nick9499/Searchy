@@ -1,0 +1,19 @@
+meta {
+  name: Search Files
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/files/search?query=roadmap
+  body: none
+  auth: bearer
+}
+
+params:query {
+  query: roadmap
+}
+
+auth:bearer {
+  token: {{token}}
+}

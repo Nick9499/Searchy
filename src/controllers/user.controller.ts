@@ -72,22 +72,14 @@ export const verifyUserOtp = async (req: Request, res: Response) => {
     return;
   }
 
-  // Update user state depending on purpose
-  if (purpose === 'VERIFY_EMAIL') {
-    await db
-      .update(users)
-      .set({
-        isVerified: true,
-        lastVerifiedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(users.email, user.email));
-  } else if (purpose === 'LOGIN_VERIFICATION') {
-    await db
-      .update(users)
-      .set({ lastVerifiedAt: new Date(), updatedAt: new Date() })
-      .where(eq(users.email, user.email));
-  }
+  await db
+    .update(users)
+    .set({
+      isVerified: true,
+      lastVerifiedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.email, user.email));
 
   const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
     expiresIn: '7d',
@@ -117,7 +109,7 @@ export const login = async (req: Request, res: Response) => {
     .from(users)
     .where(eq(users.email, body.email));
 
-  if (!user || !user.password) {
+  if (!user?.password) {
     res.status(401).json({ message: 'Invalid Credentials' });
     return;
   }
@@ -221,7 +213,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
 
     const payload = ticket.getPayload();
 
-    if (!payload || !payload.email) {
+    if (!payload?.email) {
       res.status(400).json({ message: 'Invalid google token payload' });
       return;
     }
@@ -257,7 +249,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
       token,
       user: { id: user.id, name: user.name, email: user.email },
     });
-  } catch (error) {
+  } catch (_error) {
     res.status(401).json({ message: 'Google authentication failed' });
   }
 };

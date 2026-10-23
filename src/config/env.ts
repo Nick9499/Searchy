@@ -14,6 +14,16 @@ const envSchema = z.object({
 
   // Google OAuth
   GOOGLE_CLIENT_ID: z.string().optional(),
+
+  // S3 / Object Storage config
+  S3_ENDPOINT: z.string().optional(),
+  S3_REGION: z.string().default('us-east-1'),
+  S3_ACCESS_KEY: z.string().default('test'),
+  S3_SECRET_KEY: z.string().default('test'),
+  S3_BUCKET_NAME: z.string().default('searchy-files'),
+
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z.coerce.number().default(6379),
 });
 
 export const env = envSchema.parse(process.env);

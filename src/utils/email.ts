@@ -45,6 +45,16 @@ export const sendEmail = async ({
     from: env.EMAIL_FROM,
     to,
     subject,
-    html: html || `<p>${text}</p>`,
+    html:
+      html ||
+      `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0;
+  border-radius: 8px;">
+            <h2 style="color: #333;">Searchy</h2>
+            <p style="font-size: 16px; color: #555; white-space: pre-line;">${text}</p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="font-size: 12px; color: #999;">If you didn't request this email, you can safely ignore it.</p>
+          </div>
+        `,
   });
 };
