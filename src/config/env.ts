@@ -24,6 +24,11 @@ const envSchema = z.object({
 
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().default(6379),
+
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_REDIRECT_URI: z
+    .string()
+    .default('http://localhost:3000/api/integrations/google/callback'),
 });
 
 export const env = envSchema.parse(process.env);

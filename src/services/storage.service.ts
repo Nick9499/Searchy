@@ -7,7 +7,15 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import type { Readable } from 'node:stream';
+
+interface UploadStreamToS3 {
+  stream: Readable;
+  key: string;
+  mimeType: string;
+}
 
 export const s3Client = new S3Client({
   endpoint: env.S3_ENDPOINT,
@@ -72,4 +80,22 @@ export const getPresignedDownloadUrl = async (
   });
 
   return getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
+};
+
+export const uploadStreamToS3 = async ({
+  key,
+  stream,
+  mimeType,
+}: UploadStreamToS3) => {
+  const parallelUpload = new Upload({
+    client: s3Client,
+    params: {
+      Bucket: env.S3_BUCKET_NAME,
+      Key: key,
+      Body: stream,
+      ContentType: mimeType,
+    },
+  });
+
+  await parallelUpload.done();
 };
