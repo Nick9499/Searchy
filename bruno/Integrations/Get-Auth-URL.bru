@@ -1,0 +1,15 @@
+meta {
+  name: Get Provider Auth URL
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/integrations/google/auth-url
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

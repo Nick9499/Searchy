@@ -1,0 +1,22 @@
+meta {
+  name: Start Cloud Import
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/integrations/google/import
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "remoteItemId": "GOOGLE_DRIVE_FILE_OR_FOLDER_ID",
+    "targetFolderId": null
+  }
+}

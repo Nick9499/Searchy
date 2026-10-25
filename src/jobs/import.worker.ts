@@ -121,6 +121,10 @@ export const startImportWorker = () => {
 
         console.log(`[Import Worker] Successfully imported file: ${name}`);
       }
+
+      await importItem(remoteItemId, targetFolderId || null);
+      console.log(`[Import Worker] Import job ${job.id} completed!`);
+      return { success: true };
     },
     { connection: redisConnection, concurrency: 2 },
   );
