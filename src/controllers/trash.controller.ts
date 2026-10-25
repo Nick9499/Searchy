@@ -1,15 +1,15 @@
 import { db } from '@/db';
 import { files, folders } from '@/db/schema';
-import type { AuthRequest } from '@/middlewares/auth.middleware';
+import { NotFoundError, UnauthorizedError } from '@/errors/app.error';
 import { deleteFromS3 } from '@/services/storage.service';
+import type { AuthRequest } from '@/types';
 import type { RestoreTrashInput } from '@/validators/storage.validator';
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import type { Response } from 'express';
 
 export const getTrash = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const trashedFolders = await db
@@ -30,8 +30,7 @@ export const getTrash = async (req: AuthRequest, res: Response) => {
 
 export const restoreItem = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const { id, type } = req.body as RestoreTrashInput;
@@ -49,8 +48,7 @@ export const restoreItem = async (req: AuthRequest, res: Response) => {
       );
 
     if (!file) {
-      res.status(404).json({ message: 'File not found' });
-      return;
+      throw new NotFoundError('File not found');
     }
 
     await db
@@ -74,8 +72,7 @@ export const restoreItem = async (req: AuthRequest, res: Response) => {
     );
 
   if (!folder) {
-    res.status(404).json({ message: 'Folder not found' });
-    return;
+    throw new NotFoundError('Folder not found');
   }
 
   const allFolderIds: string[] = [id];
@@ -116,8 +113,7 @@ export const restoreItem = async (req: AuthRequest, res: Response) => {
 
 export const emptyTrash = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const trashedFiles = await db

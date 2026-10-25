@@ -1,6 +1,8 @@
 import { db } from '@/db';
 import { files, folders } from '@/db/schema';
-import type { AuthRequest } from '@/middlewares/auth.middleware';
+import { NotFoundError, UnauthorizedError } from '@/errors/app.error';
+import type { AuthRequest } from '@/types';
+
 import type {
   CreateFolderInput,
   UpdateFolderInput,
@@ -10,8 +12,7 @@ import type { Response } from 'express';
 
 export const createFolder = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const { name, parentId } = req.body as CreateFolderInput;
@@ -23,8 +24,7 @@ export const createFolder = async (req: AuthRequest, res: Response) => {
       .where(and(eq(folders.id, parentId), eq(folders.userId, req.userId)));
 
     if (!parent) {
-      res.status(404).json({ message: 'Parent folder not found' });
-      return;
+      throw new NotFoundError('Parent folder not found');
     }
   }
 
@@ -42,8 +42,7 @@ export const createFolder = async (req: AuthRequest, res: Response) => {
 
 export const getFolders = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const userFolder = await db
@@ -62,8 +61,7 @@ export const getFolders = async (req: AuthRequest, res: Response) => {
 
 export const getFolderContents = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorized' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const folderId = String(req.params.id);
@@ -80,8 +78,7 @@ export const getFolderContents = async (req: AuthRequest, res: Response) => {
     );
 
   if (!folder) {
-    res.status(404).json({ message: 'Folder not found' });
-    return;
+    throw new NotFoundError('Folder not found');
   }
 
   const subFolder = await db
@@ -115,8 +112,7 @@ export const getFolderContents = async (req: AuthRequest, res: Response) => {
 
 export const updateFolder = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorize' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const id = String(req.params.id);
@@ -138,8 +134,7 @@ export const updateFolder = async (req: AuthRequest, res: Response) => {
     .returning();
 
   if (!updated) {
-    res.status(404).json('Folder not found');
-    return;
+    throw new NotFoundError('Folder not found');
   }
 
   res.json({ folder: updated });
@@ -147,8 +142,7 @@ export const updateFolder = async (req: AuthRequest, res: Response) => {
 
 export const deleteFolder = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorize' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const folderId = String(req.params.id);
@@ -165,8 +159,7 @@ export const deleteFolder = async (req: AuthRequest, res: Response) => {
     );
 
   if (!folder) {
-    res.status(404).json({ message: 'Folder not found' });
-    return;
+    throw new NotFoundError('Folder not found');
   }
 
   const allFolderIds: string[] = [folderId];

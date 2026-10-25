@@ -1,10 +1,7 @@
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '@/config/env';
-
-export interface AuthRequest extends Request {
-  userId?: string;
-}
+import type { AuthRequest, JwtPayload } from '@/types';
 
 export const authenticate = (
   req: AuthRequest,
@@ -21,7 +18,7 @@ export const authenticate = (
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET) as { userId: string };
+    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
     req.userId = decoded.userId;
     next();
   } catch {

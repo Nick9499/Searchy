@@ -5,7 +5,8 @@ import fileRouter from '@/routes/file.routes';
 import trashRouter from '@/routes/trash.routes';
 import integrationRouter from '@/routes/integration.routes';
 import { apiLimiter } from '@/middlewares/rateLimiter.middleware';
-import { ensureBucketExists } from './services/storage.service';
+import { ensureBucketExists } from '@/services/storage.service';
+import { errorHandler } from '@/middlewares/errorhandler.middleware';
 
 const app = express();
 
@@ -26,5 +27,8 @@ app.use('/api/folders', folderRouter);
 app.use('/api/files', fileRouter);
 app.use('/api/trash', trashRouter);
 app.use('/api/integrations', integrationRouter);
+
+// Global Error handler must be the last middleware mounted
+app.use(errorHandler);
 
 export default app;

@@ -1,23 +1,27 @@
 import { db } from '@/db';
 import { files, folders } from '@/db/schema';
-import type { AuthRequest } from '@/middlewares/auth.middleware';
+import {
+  BadRequestError,
+  NotFoundError,
+  UnauthorizedError,
+} from '@/errors/app.error';
+
 import {
   getPresignedDownloadUrl,
   uploadToS3,
 } from '@/services/storage.service';
+import type { AuthRequest } from '@/types';
 import type { UploadFileInput } from '@/validators/storage.validator';
 import { and, eq, ilike, isNull } from 'drizzle-orm';
 import type { Response } from 'express';
 
 export const uploadFile = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorize' });
-    return;
+    throw new UnauthorizedError();
   }
 
   if (!req.file) {
-    res.status(400).json({ message: 'No file provided' });
-    return;
+    throw new BadRequestError('No file provided');
   }
 
   const body = req.body as UploadFileInput;
@@ -30,8 +34,7 @@ export const uploadFile = async (req: AuthRequest, res: Response) => {
       .where(and(eq(folders.id, folderId), eq(folders.userId, req.userId)));
 
     if (!folder) {
-      res.status(404).json({ message: 'Folder not found' });
-      return;
+      throw new NotFoundError('Folder not found');
     }
   }
 
@@ -62,8 +65,7 @@ export const uploadFile = async (req: AuthRequest, res: Response) => {
 
 export const getRootFiles = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorize' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const rootFiles = await db
@@ -82,10 +84,7 @@ export const getRootFiles = async (req: AuthRequest, res: Response) => {
 
 export const getFileDownloadUrl = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({
-      message: 'Unauthorize',
-    });
-    return;
+    throw new UnauthorizedError();
   }
 
   const id = String(req.params.id);
@@ -102,8 +101,7 @@ export const getFileDownloadUrl = async (req: AuthRequest, res: Response) => {
     );
 
   if (!file) {
-    res.status(404).json({ message: 'File not found' });
-    return;
+    throw new NotFoundError('File not found');
   }
 
   const downloadUrl = await getPresignedDownloadUrl(file.storageKey);
@@ -113,8 +111,7 @@ export const getFileDownloadUrl = async (req: AuthRequest, res: Response) => {
 
 export const deleteFile = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorize' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const fileId = String(req.params.id);
@@ -131,8 +128,7 @@ export const deleteFile = async (req: AuthRequest, res: Response) => {
     );
 
   if (!file) {
-    res.status(404).json({ message: 'File not found' });
-    return;
+    throw new NotFoundError('File not found');
   }
 
   await db
@@ -145,16 +141,14 @@ export const deleteFile = async (req: AuthRequest, res: Response) => {
 
 export const searchFiles = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
-    res.status(401).json({ message: 'Unauthorize' });
-    return;
+    throw new UnauthorizedError();
   }
 
   const query =
     typeof req.query.query === 'string' ? req.query.query.trim() : '';
 
   if (!query) {
-    res.status(400).json({ message: 'Search query is required' });
-    return;
+    throw new BadRequestError('Search query is required');
   }
 
   const matchedFiles = await db
