@@ -5,7 +5,7 @@
   "main": "index.js",
   "lint-staged": {
     "*.{ts,json}": [
-      "biome check --write"
+      "biome check --write --no-errors-on-unmatched"
     ]
   },
   "scripts": {
