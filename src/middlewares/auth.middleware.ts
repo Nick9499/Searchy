@@ -12,10 +12,14 @@ export const authenticate = async (
 ) => {
   let token: string | undefined;
 
-  if (req.cookies?.token) {
-    token = req.cookies.token;
-  } else if (req.headers.authorization?.startsWith('Bearer ')) {
+  // Prefer explicit Authorization header, fallback to cookie
+  if (req.headers.authorization?.startsWith('Bearer ')) {
     token = req.headers.authorization.split(' ')[1];
+  } else if (
+    typeof req.cookies?.token === 'string' &&
+    req.cookies.token.length > 0
+  ) {
+    token = req.cookies.token;
   }
 
   if (!token) {

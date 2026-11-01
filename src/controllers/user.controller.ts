@@ -92,6 +92,7 @@ export const verifyUserOtp = async (req: Request, res: Response) => {
 
   const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
     expiresIn: '7d',
+    jwtid: crypto.randomUUID(),
   });
   res
     .cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS)
@@ -153,9 +154,10 @@ export const login = async (req: Request, res: Response) => {
 
   const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
     expiresIn: '7d',
+    jwtid: crypto.randomUUID(),
   });
 
-  res.cookie(AUTH_COOKIE_NAME, COOKIE_OPTIONS).json({ token });
+  res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({ token });
 };
 
 export const forgotPassword = async (req: Request, res: Response) => {
@@ -244,6 +246,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
 
     const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
       expiresIn: '7d',
+      jwtid: crypto.randomUUID(),
     });
     res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({
       token,

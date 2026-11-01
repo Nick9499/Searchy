@@ -46,6 +46,39 @@ services:
     volumes:
       - redisdata:/data
 
+  app:
+    build:
+      context: .
+      target: dev
+    restart: always
+    ports: ["5000:5000"]
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@db:5432/${DB_NAME:-searchy}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      S3_ENDPOINT: http://s3mock:9090
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-dummy}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-dummy}
+      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-searchy-files}
+      JWT_SECRET: ${JWT_SECRET:-supersecretjwtkey12345678901234567890}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-http://localhost:5000/api/integrations/google/callback}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+    volumes:
+      # Mount your local source code for live-reload without rebuilding the container!
+      - ./src:/app/src
+      - /app/node_modules # prevent host node_modules from overwriting container node_modules
+    depends_on:
+      - db
+      - redis
+      - s3mock
+
 volumes:
   pgdata:
   s3data:
