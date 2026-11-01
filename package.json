@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "tsx watch --clear-screen=false src/index.ts",
-    "build": "esbuild src/index.ts --bundle --platform=node --target=node24 --outdir=dist --packages=external",
+    "build": "esbuild src/index.ts src/db/migrate.ts --bundle --platform=node --target=node24 --outdir=dist --packages=external",
     "start": "node dist/index.js",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
