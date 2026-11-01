@@ -18,6 +18,6 @@ RUN npm run build
 FROM node:24-alpine AS prod
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --ignore-scripts
 COPY --from=builder /app/dist ./dist
 CMD ["npm", "run", "start"]
