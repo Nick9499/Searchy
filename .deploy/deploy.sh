@@ -6,8 +6,8 @@ echo "   Deploying Searchy Production Update   "
 echo "========================================="
 
 # 1. Pull latest code
-echo "==> Pulling latest changes from master..."
-git pull origin master
+echo "==> Pulling latest changes..."
+git pull
 
 # 2. Build and restart containers
 echo "==> Building and starting production containers..."

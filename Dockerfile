@@ -1,23 +1,25 @@
 # ---- Base ----
-FROM node:24-alpine AS base
+FROM node:24-slim AS base
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# ---- Development ----
+# ---- Development (Hot-reloading) ----
 FROM base AS dev
 COPY . .
 CMD ["npm", "run", "dev"]
 
-# ---- Build ----
+# ---- Builder ----
 FROM base AS builder
 COPY . .
 RUN npm run build
 
-# ---- Production ----
-FROM node:24-alpine AS prod
+# ---- Production (Debian glibc, lean) ----
+FROM node:24-slim AS prod
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts
 COPY --from=builder /app/dist ./dist
+COPY drizzle ./drizzle
+COPY drizzle.config.ts ./
 CMD ["npm", "run", "start"]
