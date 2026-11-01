@@ -1,3 +1,4 @@
+import { BadRequestError } from '@/errors/app.error';
 import type { ICloudStorageProvider } from './provider.interface';
 
 class ProviderRegistry {
@@ -11,7 +12,7 @@ class ProviderRegistry {
     const provider = this.providers.get(name.toLowerCase());
 
     if (!provider) {
-      throw new Error(`Provider ${name} is not supported`);
+      throw new BadRequestError(`Provider ${name} is not supported`);
     }
 
     return provider;
