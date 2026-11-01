@@ -301,4 +301,50 @@ describe('User Auth & Account Management', () => {
       expect(res.body.message).toBe('Account deleted');
     });
   });
+
+  // ---- LOGOUT ----
+  describe('POST /api/users/logout', () => {
+    it('should reject logout without authentication', async () => {
+      const res = await request(app).post('/api/users/logout');
+      expect(res.status).toBe(401);
+    });
+
+    it('should logout user and clear cookie', async () => {
+      // Create a temporary authenticated user to test logout
+      const tempEmail = 'logout.test@example.com';
+      await request(app).post('/api/users/signup').send({
+        name: 'Logout User',
+        email: tempEmail,
+        password: 'Password123!',
+      });
+      await request(app).post('/api/users/resend-otp').send({
+        email: tempEmail,
+        purpose: 'VERIFY_EMAIL',
+      });
+      const verifyRes = await request(app).post('/api/users/verify-otp').send({
+        email: tempEmail,
+        code: '123456',
+        purpose: 'VERIFY_EMAIL',
+      });
+      const tempToken = verifyRes.body.token;
+
+      const res = await request(app)
+        .post('/api/users/logout')
+        .set('Authorization', `Bearer ${tempToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('Logged out successfully');
+      expect(res.headers['set-cookie']).toBeDefined();
+
+      // Clean up temp user
+      const [u] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, tempEmail));
+      if (u) {
+        await db.delete(otps).where(eq(otps.email, tempEmail));
+        await db.delete(users).where(eq(users.id, u.id));
+      }
+    });
+  });
 });

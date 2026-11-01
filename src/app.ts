@@ -7,10 +7,12 @@ import integrationRouter from '@/routes/integration.routes';
 import { apiLimiter } from '@/middlewares/rateLimiter.middleware';
 import { ensureBucketExists } from '@/services/storage.service';
 import { errorHandler } from '@/middlewares/errorhandler.middleware';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 
 app.use(express.json());
+app.use(cookieParser());
 
 ensureBucketExists().catch((err) =>
   console.error('Failed to initialize S3 bucket', err),

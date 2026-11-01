@@ -24,9 +24,15 @@ import {
   UnauthorizedError,
 } from '@/errors/app.error';
 import type { AuthRequest } from '@/types';
+import { redisClient } from '@/config/redis';
+import {
+  AUTH_COOKIE_NAME,
+  CLEAR_COOKIE_OPTIONS,
+  COOKIE_OPTIONS,
+  PERIODIC_VERIFICATION_DAYS,
+} from '@/constants';
 
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
-const PERIODIC_VERIFICATION_DAYS = 30;
 
 export const signup = async (req: Request, res: Response) => {
   const body = req.body as SignupInput;
@@ -87,7 +93,9 @@ export const verifyUserOtp = async (req: Request, res: Response) => {
   const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
     expiresIn: '7d',
   });
-  res.json({ message: 'Verification successful', token });
+  res
+    .cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS)
+    .json({ message: 'Verification successful', token });
 };
 
 export const resendOtp = async (req: Request, res: Response) => {
@@ -147,7 +155,7 @@ export const login = async (req: Request, res: Response) => {
     expiresIn: '7d',
   });
 
-  res.json({ token });
+  res.cookie(AUTH_COOKIE_NAME, COOKIE_OPTIONS).json({ token });
 };
 
 export const forgotPassword = async (req: Request, res: Response) => {
@@ -237,7 +245,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
     const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
       expiresIn: '7d',
     });
-    res.json({
+    res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({
       token,
       user: { id: user.id, name: user.name, email: user.email },
     });
@@ -302,4 +310,32 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
 
   await db.delete(users).where(eq(users.id, req.userId));
   res.json({ message: 'Account deleted' });
+};
+
+export const logout = async (req: AuthRequest, res: Response) => {
+  const token =
+    req.cookies.token ||
+    (req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization?.split(' ')[1]
+      : null);
+
+  if (token && env.NODE_ENV !== 'test') {
+    const decoded = jwt.decode(token) as { exp?: number } | null;
+    if (decoded?.exp) {
+      const now = Math.floor(Date.now() / 1000);
+      const remainingSeconds = decoded.exp - now;
+
+      if (remainingSeconds > 0) {
+        await redisClient.setex(
+          `blacklist:${token}`,
+          remainingSeconds,
+          'revoked',
+        );
+      }
+    }
+  }
+
+  res.clearCookie(AUTH_COOKIE_NAME, CLEAR_COOKIE_OPTIONS);
+
+  res.json({ message: 'Logged out successfully' });
 };

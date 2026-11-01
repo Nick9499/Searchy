@@ -2,26 +2,40 @@ import type { NextFunction, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { env } from '@/config/env';
 import type { AuthRequest, JwtPayload } from '@/types';
+import { UnauthorizedError } from '@/errors/app.error';
+import { redisClient } from '@/config/redis';
 
-export const authenticate = (
+export const authenticate = async (
   req: AuthRequest,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ) => {
-  const authHeader = req.headers.authorization;
+  let token: string | undefined;
 
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({ message: 'No token provided' });
+  if (req.cookies?.token) {
+    token = req.cookies.token;
+  } else if (req.headers.authorization?.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token) {
+    next(new UnauthorizedError('No authentication token provided'));
     return;
   }
 
-  const token = authHeader.split(' ')[1];
-
   try {
+    if (env.NODE_ENV !== 'test') {
+      const isBlacklisted = await redisClient.exists(`blacklist:${token}`);
+      if (isBlacklisted) {
+        next(new UnauthorizedError('Token has been revoked'));
+        return;
+      }
+    }
+
     const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
     req.userId = decoded.userId;
     next();
   } catch {
-    res.status(401).json({ message: 'Invalid or expired token' });
+    next(new UnauthorizedError('Invalid or expired tokens'));
   }
 };
