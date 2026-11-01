@@ -19,7 +19,7 @@ sleep 5
 
 # 4. Run Drizzle DB migrations
 echo "==> Running database migrations..."
-docker compose --env-file .env -f .deploy/docker-compose.prod.yml exec -T app npx drizzle-kit migrate
+docker compose --env-file .env -f .deploy/docker-compose.prod.yml exec -T app node dist/db/migrate.js
 
 echo "========================================="
 echo "   Deployment completed successfully!    "
