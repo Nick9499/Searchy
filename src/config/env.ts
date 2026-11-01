@@ -32,6 +32,7 @@ const envSchema = z.object({
   GOOGLE_REDIRECT_URI: z
     .string()
     .default('http://localhost:3000/api/integrations/google/callback'),
+  FRONTEND_URL: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

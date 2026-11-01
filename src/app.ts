@@ -8,8 +8,33 @@ import { apiLimiter } from '@/middlewares/rateLimiter.middleware';
 import { ensureBucketExists } from '@/services/storage.service';
 import { errorHandler } from '@/middlewares/errorhandler.middleware';
 import cookieParser from 'cookie-parser';
+import { env } from './config/env';
+import cors from 'cors';
 
 const app = express();
+
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  ...(env.FRONTEND_URL ? [env.FRONTEND_URL] : []),
+];
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return cb(null, true);
+      }
+
+      return cb(null, false);
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+  }),
+);
 
 app.use(express.json());
 app.use(cookieParser());
