@@ -389,10 +389,12 @@ export const logoutAll = async (req: AuthRequest, res: Response) => {
     .where(eq(users.id, userId))
     .returning({ tokenVersion: users.tokenVersion });
 
-  if (redisClient.status === 'ready' && env.NODE_ENV !== 'test') {
+  if (redisClient.status === 'ready') {
     await redisClient.set(
       `user_token_version:${userId}`,
       String(updatedUser?.tokenVersion ?? 1),
+      'EX',
+      3600,
     );
   }
 
