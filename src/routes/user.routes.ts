@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import {
   deleteUser,
+  disable2FA,
+  enable2Fa,
   forgotPassword,
   getMe,
   googleSignIn,
@@ -9,13 +11,17 @@ import {
   logoutAll,
   resendOtp,
   resetPassword,
+  setup2FA,
   signup,
   updateUser,
+  verify2FALogin,
   verifyUserOtp,
 } from '@/controllers/user.controller';
 import { authenticate } from '@/middlewares/auth.middleware';
 import { validate } from '@/middlewares/validate.middleware';
 import {
+  disable2FASchema,
+  enable2FASchema,
   forgotPasswordSchema,
   googleAuthSchema,
   loginSchema,
@@ -23,6 +29,7 @@ import {
   resetPasswordSchema,
   signupSchema,
   updateUserSchema,
+  verify2FASchema,
   verifyOtpSchema,
 } from '@/validators/user.validator';
 import { authLimiter } from '@/middlewares/rateLimiter.middleware';
@@ -57,5 +64,21 @@ router.patch('/me', authenticate, validate(updateUserSchema), updateUser);
 router.delete('/me', authenticate, deleteUser);
 router.post('/logout', authenticate, logout);
 router.post('/logout-all', authenticate, logoutAll);
+
+router.post(
+  '/2fa/verify',
+  authLimiter,
+  validate(verify2FASchema),
+  verify2FALogin,
+);
+
+router.post('/2fa/setup', authenticate, setup2FA);
+router.post('/2fa/enable', authenticate, validate(enable2FASchema), enable2Fa);
+router.post(
+  '/2fa/disable',
+  authenticate,
+  validate(disable2FASchema),
+  disable2FA,
+);
 
 export default router;

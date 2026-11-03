@@ -24,7 +24,7 @@ export const users = pgTable('users', {
   lastVerifiedAt: timestamp('last_verified_at'),
   tokenVersion: integer('token_version').notNull().default(0),
   twoFactorSecret: text('two_factor_secret'),
-  twoFactorEnabled: boolean('twoFactorEnabled').notNull().default(false),
+  twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   twoFactorRecoveryCodes: text('two_factor_recovery_code'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

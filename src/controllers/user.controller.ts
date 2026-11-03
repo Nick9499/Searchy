@@ -4,6 +4,8 @@ import { env } from '@/config/env';
 import { db } from '@/db';
 import { users } from '@/db/schema';
 import type {
+  Disable2FAInput,
+  Enable2FAInput,
   ForgotPasswordInput,
   GoogleAuthInput,
   LoginInput,
@@ -11,6 +13,7 @@ import type {
   ResetPasswordInput,
   SignupInput,
   UpdateUserInput,
+  Verify2FAInput,
   VerifyOtpInput,
 } from '@/validators/user.validator';
 import { eq, sql } from 'drizzle-orm';
@@ -31,6 +34,9 @@ import {
   COOKIE_OPTIONS,
   PERIODIC_VERIFICATION_DAYS,
 } from '@/constants';
+import { generateSecret, generateURI, verifySync } from 'otplib';
+import QRCode from 'qrcode';
+import crypto from 'node:crypto';
 
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
@@ -152,6 +158,21 @@ export const login = async (req: Request, res: Response) => {
     res.status(200).json({
       message:
         'Periodic verification required. A code has been sent to your email',
+    });
+    return;
+  }
+
+  if (user.twoFactorEnabled) {
+    const tempToken = jwt.sign(
+      { userId: user.id, is2FAPending: true },
+      env.JWT_SECRET,
+      { expiresIn: '5m' },
+    );
+
+    res.json({
+      requires2FA: true,
+      tempToken,
+      message: 'Please provide the 6 digit code from your authenticator app',
     });
     return;
   }
@@ -370,7 +391,7 @@ export const logoutAll = async (req: AuthRequest, res: Response) => {
 
   if (redisClient.status === 'ready' && env.NODE_ENV !== 'test') {
     await redisClient.set(
-      `user_token_version:${users.tokenVersion}`,
+      `user_token_version:${userId}`,
       String(updatedUser?.tokenVersion ?? 1),
     );
   }
@@ -378,4 +399,202 @@ export const logoutAll = async (req: AuthRequest, res: Response) => {
   res.clearCookie(AUTH_COOKIE_NAME, CLEAR_COOKIE_OPTIONS).json({
     message: 'Logged out of all devices successfully',
   });
+};
+
+export const setup2FA = async (req: AuthRequest, res: Response) => {
+  const userId = req.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('Unauthorize');
+  }
+
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  if (user.twoFactorEnabled) {
+    throw new BadRequestError('2FA is already enabled on your account');
+  }
+
+  const secret = generateSecret();
+  const otpauth = generateURI({
+    secret,
+    label: user.email,
+    issuer: 'Searchy',
+  });
+  const qrCodeUrl = await QRCode.toDataURL(otpauth);
+
+  await db
+    .update(users)
+    .set({ twoFactorSecret: secret, updatedAt: new Date() })
+    .where(eq(users.id, userId));
+
+  res.json({
+    secret,
+    qrCodeUrl,
+    message:
+      'Scan the QR code with Google Authenticator, Microsoft Authenticator, or 1Password',
+  });
+};
+
+export const enable2Fa = async (req: AuthRequest, res: Response) => {
+  const userId = req.userId;
+  const { code } = req.body as Enable2FAInput;
+
+  if (!userId) throw new UnauthorizedError('Unauthorize');
+
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+
+  if (!user) throw new NotFoundError('User not found');
+  if (user.twoFactorEnabled)
+    throw new BadRequestError('2Fa is alreayd enabled');
+  if (!user.twoFactorSecret)
+    throw new BadRequestError('Please initiate 2FA setup first');
+
+  const { valid } = verifySync({
+    token: code,
+    secret: user.twoFactorSecret,
+  });
+
+  if (!valid) {
+    throw new BadRequestError('Invalid 2FA code. Please try again');
+  }
+
+  const rawRecoveryCodes: string[] = [];
+  const hashedRecoveryCodes: string[] = [];
+
+  for (let i = 0; i < 8; i++) {
+    const rawCode = crypto.randomBytes(5).toString('hex');
+    rawRecoveryCodes.push(rawCode);
+    hashedRecoveryCodes.push(await bcrypt.hash(rawCode, 10));
+  }
+
+  await db
+    .update(users)
+    .set({
+      twoFactorEnabled: true,
+      twoFactorRecoveryCodes: JSON.stringify(hashedRecoveryCodes),
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+
+  res.json({
+    message:
+      '2FA enabled successfully. Store your recovery codes in a safe place',
+    recoveryCodes: rawRecoveryCodes,
+  });
+};
+
+export const verify2FALogin = async (req: AuthRequest, res: Response) => {
+  const { code, tempToken } = req.body as Verify2FAInput;
+
+  let payload: { userId: string; is2FAPending?: boolean };
+  try {
+    payload = jwt.verify(tempToken, env.JWT_SECRET) as {
+      userId: string;
+      is2FAPending: boolean;
+    };
+  } catch {
+    throw new UnauthorizedError('Session has expired. Please login again');
+  }
+
+  if (!payload.is2FAPending) {
+    throw new UnauthorizedError('Invalid 2FA session token');
+  }
+
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, payload.userId));
+
+  if (!user?.twoFactorEnabled || !user?.twoFactorSecret)
+    throw new UnauthorizedError('2FA is not enabled for this user');
+
+  let verified = false;
+
+  if (code.length === 6 && /^\d+$/.test(code)) {
+    verified = verifySync({ token: code, secret: user.twoFactorSecret }).valid;
+  }
+
+  if (!verified && user.twoFactorRecoveryCodes) {
+    const hashedCodes: string[] = JSON.parse(user.twoFactorRecoveryCodes);
+    let matchIndex = -1;
+
+    for (let i = 0; i < hashedCodes.length; i++) {
+      if (await bcrypt.compare(code, hashedCodes[i])) {
+        matchIndex = i;
+        break;
+      }
+    }
+
+    if (matchIndex !== -1) {
+      verified = true;
+      hashedCodes.splice(matchIndex, 1);
+
+      await db
+        .update(users)
+        .set({
+          twoFactorRecoveryCodes: JSON.stringify(hashedCodes),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
+    }
+  }
+
+  if (!verified) {
+    throw new UnauthorizedError(
+      'Invalid 2FA verfication code or recovery code',
+    );
+  }
+
+  const token = jwt.sign(
+    {
+      userId: user.id,
+      tokenVersion: user.tokenVersion ?? 0,
+    },
+    env.JWT_SECRET,
+    { expiresIn: '7d', jwtid: crypto.randomUUID() },
+  );
+
+  res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({
+    token,
+    message: '2FA authenticated successfully',
+  });
+};
+
+export const disable2FA = async (req: AuthRequest, res: Response) => {
+  const userId = req.userId;
+  const { code, password } = req.body as Disable2FAInput;
+
+  if (!userId) throw new UnauthorizedError('Unauthorize');
+  const [user] = await db.select().from(users).where(eq(users.id, userId));
+  if (!user) throw new NotFoundError('User not found');
+  if (!user.twoFactorEnabled || !user.twoFactorSecret)
+    throw new BadRequestError('2FA is not enabled on this account');
+
+  if (!user.password || !(await bcrypt.compare(password, user.password))) {
+    throw new UnauthorizedError('Invalid password');
+  }
+
+  const { valid } = verifySync({
+    token: code,
+    secret: user.twoFactorSecret,
+  });
+
+  if (!valid)
+    throw new BadRequestError('Invalid 2FA code. could not disable 2FA');
+
+  await db
+    .update(users)
+    .set({
+      twoFactorEnabled: false,
+      twoFactorSecret: null,
+      twoFactorRecoveryCodes: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(users.id, userId));
+
+  res.json({ message: '2FA has been disabled successfully' });
 };
