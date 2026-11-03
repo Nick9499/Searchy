@@ -2,6 +2,7 @@ import type { Request } from 'express';
 
 export interface JwtPayload {
   userId: string;
+  tokenVersion?: number;
 }
 
 export interface AuthCookies {

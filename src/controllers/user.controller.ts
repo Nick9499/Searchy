@@ -13,7 +13,7 @@ import type {
   UpdateUserInput,
   VerifyOtpInput,
 } from '@/validators/user.validator';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { createAndSendOtp, validateOtp } from '@/services/otp.service';
@@ -90,10 +90,14 @@ export const verifyUserOtp = async (req: Request, res: Response) => {
     })
     .where(eq(users.email, user.email));
 
-  const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
-    expiresIn: '7d',
-    jwtid: crypto.randomUUID(),
-  });
+  const token = jwt.sign(
+    { userId: user.id, tokenVersion: user.tokenVersion ?? 0 },
+    env.JWT_SECRET,
+    {
+      expiresIn: '7d',
+      jwtid: crypto.randomUUID(),
+    },
+  );
   res
     .cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS)
     .json({ message: 'Verification successful', token });
@@ -152,10 +156,14 @@ export const login = async (req: Request, res: Response) => {
     return;
   }
 
-  const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
-    expiresIn: '7d',
-    jwtid: crypto.randomUUID(),
-  });
+  const token = jwt.sign(
+    { userId: user.id, tokenVersion: user.tokenVersion ?? 0 },
+    env.JWT_SECRET,
+    {
+      expiresIn: '7d',
+      jwtid: crypto.randomUUID(),
+    },
+  );
 
   res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({ token });
 };
@@ -244,10 +252,14 @@ export const googleSignIn = async (req: Request, res: Response) => {
       });
     }
 
-    const token = jwt.sign({ userId: user.id }, env.JWT_SECRET, {
-      expiresIn: '7d',
-      jwtid: crypto.randomUUID(),
-    });
+    const token = jwt.sign(
+      { userId: user.id, tokenVersion: user.tokenVersion ?? 0 },
+      env.JWT_SECRET,
+      {
+        expiresIn: '7d',
+        jwtid: crypto.randomUUID(),
+      },
+    );
     res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({
       token,
       user: { id: user.id, name: user.name, email: user.email },
@@ -341,4 +353,29 @@ export const logout = async (req: AuthRequest, res: Response) => {
   res.clearCookie(AUTH_COOKIE_NAME, CLEAR_COOKIE_OPTIONS);
 
   res.json({ message: 'Logged out successfully' });
+};
+
+export const logoutAll = async (req: AuthRequest, res: Response) => {
+  const userId = req.userId;
+
+  if (!userId) {
+    throw new UnauthorizedError('Unauthorized');
+  }
+
+  const [updatedUser] = await db
+    .update(users)
+    .set({ tokenVersion: sql`${users.tokenVersion}+1`, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning({ tokenVersion: users.tokenVersion });
+
+  if (redisClient.status === 'ready' && env.NODE_ENV !== 'test') {
+    await redisClient.set(
+      `user_token_version:${users.tokenVersion}`,
+      String(updatedUser?.tokenVersion ?? 1),
+    );
+  }
+
+  res.clearCookie(AUTH_COOKIE_NAME, CLEAR_COOKIE_OPTIONS).json({
+    message: 'Logged out of all devices successfully',
+  });
 };

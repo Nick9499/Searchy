@@ -6,6 +6,7 @@ import {
   googleSignIn,
   login,
   logout,
+  logoutAll,
   resendOtp,
   resetPassword,
   signup,
@@ -55,5 +56,6 @@ router.get('/me', authenticate, getMe);
 router.patch('/me', authenticate, validate(updateUserSchema), updateUser);
 router.delete('/me', authenticate, deleteUser);
 router.post('/logout', authenticate, logout);
+router.post('/logout-all', authenticate, logoutAll);
 
 export default router;
