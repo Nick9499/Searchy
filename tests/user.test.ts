@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { generateSync } from 'otplib';
 import { db } from '@/db';
 import { otps, users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
@@ -345,6 +346,223 @@ describe('User Auth & Account Management', () => {
         await db.delete(otps).where(eq(otps.email, tempEmail));
         await db.delete(users).where(eq(users.id, u.id));
       }
+    });
+  });
+
+  // ---- LOGOUT ALL DEVICES ----
+  describe('POST /api/users/logout-all', () => {
+    it('should reject logout-all without authentication', async () => {
+      const res = await request(app).post('/api/users/logout-all');
+      expect(res.status).toBe(401);
+    });
+
+    it('should invalidate tokens across all devices', async () => {
+      // 1. Create and verify a test user
+      const multiDeviceEmail = 'multidevice@example.com';
+      await request(app).post('/api/users/signup').send({
+        name: 'Multi Device User',
+        email: multiDeviceEmail,
+        password: 'Password123!',
+      });
+      await request(app).post('/api/users/resend-otp').send({
+        email: multiDeviceEmail,
+        purpose: 'VERIFY_EMAIL',
+      });
+      const verifyRes = await request(app).post('/api/users/verify-otp').send({
+        email: multiDeviceEmail,
+        code: '123456',
+        purpose: 'VERIFY_EMAIL',
+      });
+      const deviceAToken = verifyRes.body.token;
+
+      // 2. Simulate Device B logging in
+      const loginRes = await request(app).post('/api/users/login').send({
+        email: multiDeviceEmail,
+        password: 'Password123!',
+      });
+      const deviceBToken = loginRes.body.token;
+
+      // Both tokens work
+      const testA = await request(app)
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${deviceAToken}`);
+      expect(testA.status).toBe(200);
+
+      // 3. Device A triggers logout-all
+      const logoutAllRes = await request(app)
+        .post('/api/users/logout-all')
+        .set('Authorization', `Bearer ${deviceAToken}`);
+      expect(logoutAllRes.status).toBe(200);
+      expect(logoutAllRes.body.message).toBe(
+        'Logged out of all devices successfully',
+      );
+
+      // 4. Device B is now rejected because tokenVersion is outdated
+      const testB = await request(app)
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${deviceBToken}`);
+      expect(testB.status).toBe(401);
+
+      // Clean up
+      const [u] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, multiDeviceEmail));
+      if (u) {
+        await db.delete(otps).where(eq(otps.email, multiDeviceEmail));
+        await db.delete(users).where(eq(users.id, u.id));
+      }
+    });
+  });
+
+  // ---- TWO-FACTOR AUTHENTICATION (2FA) LIFECYCLE ----
+  describe('2FA Lifecycle', () => {
+    const twoFaEmail = 'twofa.user@example.com';
+    let userToken: string;
+    let totpSecret: string;
+    let recoveryCodes: string[] = [];
+
+    beforeAll(async () => {
+      await request(app).post('/api/users/signup').send({
+        name: '2FA User',
+        email: twoFaEmail,
+        password: 'Password123!',
+      });
+      await request(app).post('/api/users/resend-otp').send({
+        email: twoFaEmail,
+        purpose: 'VERIFY_EMAIL',
+      });
+      const verifyRes = await request(app).post('/api/users/verify-otp').send({
+        email: twoFaEmail,
+        code: '123456',
+        purpose: 'VERIFY_EMAIL',
+      });
+      userToken = verifyRes.body.token;
+    });
+
+    afterAll(async () => {
+      const [u] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, twoFaEmail));
+      if (u) {
+        await db.delete(otps).where(eq(otps.email, twoFaEmail));
+        await db.delete(users).where(eq(users.id, u.id));
+      }
+    });
+
+    it('POST /api/users/2fa/setup - should generate TOTP secret and QR Code', async () => {
+      const res = await request(app)
+        .post('/api/users/2fa/setup')
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.secret).toBeDefined();
+      expect(res.body.qrCodeUrl).toContain('data:image/png;base64');
+      totpSecret = res.body.secret;
+    });
+
+    it('POST /api/users/2fa/enable - should reject invalid code', async () => {
+      const res = await request(app)
+        .post('/api/users/2fa/enable')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ code: '000000' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('Invalid 2FA code');
+    });
+
+    it('POST /api/users/2fa/enable - should enable 2FA with valid code and return recovery codes', async () => {
+      const validCode = generateSync({ secret: totpSecret });
+
+      const res = await request(app)
+        .post('/api/users/2fa/enable')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ code: validCode });
+
+      expect(res.status).toBe(200);
+      expect(res.body.recoveryCodes).toHaveLength(8);
+      recoveryCodes = res.body.recoveryCodes;
+    });
+
+    it('POST /api/users/login - should require 2FA and return tempToken', async () => {
+      const res = await request(app).post('/api/users/login').send({
+        email: twoFaEmail,
+        password: 'Password123!',
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.requires2FA).toBe(true);
+      expect(res.body.tempToken).toBeDefined();
+    });
+
+    it('POST /api/users/2fa/verify - should complete login with valid 6-digit TOTP code', async () => {
+      const loginRes = await request(app).post('/api/users/login').send({
+        email: twoFaEmail,
+        password: 'Password123!',
+      });
+      const tempToken = loginRes.body.tempToken;
+      const validCode = generateSync({ secret: totpSecret });
+
+      const res = await request(app).post('/api/users/2fa/verify').send({
+        tempToken,
+        code: validCode,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.token).toBeDefined();
+      expect(res.headers['set-cookie']).toBeDefined();
+    });
+
+    it('POST /api/users/2fa/verify - should complete login with backup recovery code', async () => {
+      const loginRes = await request(app).post('/api/users/login').send({
+        email: twoFaEmail,
+        password: 'Password123!',
+      });
+      const tempToken = loginRes.body.tempToken;
+      const backupCode = recoveryCodes[0];
+
+      const res = await request(app).post('/api/users/2fa/verify').send({
+        tempToken,
+        code: backupCode,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.token).toBeDefined();
+
+      // Trying the same used recovery code again should fail
+      const loginRes2 = await request(app).post('/api/users/login').send({
+        email: twoFaEmail,
+        password: 'Password123!',
+      });
+      const reuseRes = await request(app).post('/api/users/2fa/verify').send({
+        tempToken: loginRes2.body.tempToken,
+        code: backupCode,
+      });
+      expect(reuseRes.status).toBe(401);
+    });
+
+    it('POST /api/users/2fa/disable - should disable 2FA with password and code', async () => {
+      const validCode = generateSync({ secret: totpSecret });
+
+      const res = await request(app)
+        .post('/api/users/2fa/disable')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({
+          password: 'Password123!',
+          code: validCode,
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('2FA has been disabled successfully');
+
+      // Next login should not require 2FA
+      const loginRes = await request(app).post('/api/users/login').send({
+        email: twoFaEmail,
+        password: 'Password123!',
+      });
+      expect(loginRes.body.token).toBeDefined();
+      expect(loginRes.body.requires2FA).toBeUndefined();
     });
   });
 });

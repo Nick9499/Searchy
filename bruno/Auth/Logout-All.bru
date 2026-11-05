@@ -1,0 +1,21 @@
+meta {
+  name: Logout All Devices
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/users/logout-all
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.setEnvVar("token", "");
+  }
+}

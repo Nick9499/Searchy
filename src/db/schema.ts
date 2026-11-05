@@ -22,6 +22,10 @@ export const users = pgTable('users', {
   googleId: text('google_id').unique(),
   isVerified: boolean('is_verified').notNull().default(false),
   lastVerifiedAt: timestamp('last_verified_at'),
+  tokenVersion: integer('token_version').notNull().default(0),
+  twoFactorSecret: text('two_factor_secret'),
+  twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
+  twoFactorRecoveryCodes: text('two_factor_recovery_code'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

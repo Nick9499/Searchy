@@ -43,6 +43,13 @@
       "when": 1792817656698,
       "tag": "0005_futuristic_menace",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793721682707,
+      "tag": "0006_shallow_azazel",
+      "breakpoints": true
     }
   ]
 }
