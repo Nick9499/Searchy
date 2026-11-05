@@ -1,0 +1,25 @@
+meta {
+  name: 2FA Verify Login
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/api/users/2fa/verify
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "tempToken": "{{tempToken}}",
+    "code": "123456"
+  }
+}
+
+script:post-response {
+  if (res.body && res.body.token) {
+    bru.setEnvVar("token", res.body.token);
+    bru.setEnvVar("tempToken", "");
+  }
+}

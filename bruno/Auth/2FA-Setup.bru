@@ -1,0 +1,21 @@
+meta {
+  name: 2FA Setup
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/users/2fa/setup
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  if (res.body && res.body.secret) {
+    bru.setEnvVar("totpSecret", res.body.secret);
+  }
+}

@@ -1,0 +1,22 @@
+meta {
+  name: 2FA Disable
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/users/2fa/disable
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "password": "Password123!",
+    "code": "123456"
+  }
+}
