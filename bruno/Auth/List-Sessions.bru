@@ -1,0 +1,15 @@
+meta {
+  name: List Active Sessions
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/users/sessions
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}

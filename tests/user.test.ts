@@ -565,4 +565,121 @@ describe('User Auth & Account Management', () => {
       expect(loginRes.body.requires2FA).toBeUndefined();
     });
   });
+
+  // ---- SESSION & DEVICE MANAGEMENT ----
+  describe('Session Management', () => {
+    const sessionEmail = 'session.test@example.com';
+    let tokenDevice1: string;
+    let tokenDevice2: string;
+
+    beforeAll(async () => {
+      await request(app).post('/api/users/signup').send({
+        name: 'Session Test User',
+        email: sessionEmail,
+        password: 'Password123!',
+      });
+      await request(app).post('/api/users/resend-otp').send({
+        email: sessionEmail,
+        purpose: 'VERIFY_EMAIL',
+      });
+      const verifyRes = await request(app).post('/api/users/verify-otp').send({
+        email: sessionEmail,
+        code: '123456',
+        purpose: 'VERIFY_EMAIL',
+      });
+      tokenDevice1 = verifyRes.body.token;
+
+      // Simulate second device login
+      const loginRes = await request(app)
+        .post('/api/users/login')
+        .set('User-Agent', 'Mobile-Safari/17.0')
+        .send({
+          email: sessionEmail,
+          password: 'Password123!',
+        });
+      tokenDevice2 = loginRes.body.token;
+    });
+
+    afterAll(async () => {
+      const [u] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, sessionEmail));
+      if (u) {
+        await db.delete(otps).where(eq(otps.email, sessionEmail));
+        await db.delete(users).where(eq(users.id, u.id));
+      }
+    });
+
+    it('GET /api/users/sessions - should reject unauthenticated request (401)', async () => {
+      const res = await request(app).get('/api/users/sessions');
+      expect(res.status).toBe(401);
+    });
+
+    it('GET /api/users/sessions - should list active sessions and mark current device', async () => {
+      const res = await request(app)
+        .get('/api/users/sessions')
+        .set('Authorization', `Bearer ${tokenDevice1}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.sessions).toBeInstanceOf(Array);
+      expect(res.body.sessions.length).toBe(2);
+
+      const current = res.body.sessions.find(
+        (s: { current: boolean }) => s.current === true,
+      );
+      expect(current).toBeDefined();
+      expect(current.id).toBe(tokenDevice1);
+
+      const other = res.body.sessions.find(
+        (s: { current: boolean }) => s.current === false,
+      );
+      expect(other).toBeDefined();
+      expect(other.id).toBe(tokenDevice2);
+      expect(other.userAgent).toContain('Mobile-Safari');
+    });
+
+    it('DELETE /api/users/sessions/:sessionId - should reject unauthenticated request (401)', async () => {
+      const res = await request(app).delete(
+        `/api/users/sessions/${tokenDevice2}`,
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('DELETE /api/users/sessions/:sessionId - should return 404 for unknown session', async () => {
+      const res = await request(app)
+        .delete('/api/users/sessions/nonexistent-session-id')
+        .set('Authorization', `Bearer ${tokenDevice1}`);
+
+      expect(res.status).toBe(404);
+      expect(res.body.message).toBe('Session not found');
+    });
+
+    it('DELETE /api/users/sessions/:sessionId - should revoke specific device session', async () => {
+      const res = await request(app)
+        .delete(`/api/users/sessions/${tokenDevice2}`)
+        .set('Authorization', `Bearer ${tokenDevice1}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.message).toBe('Session revoked successfully');
+
+      // Device 2 should now be unauthorized
+      const checkDevice2 = await request(app)
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${tokenDevice2}`);
+      expect(checkDevice2.status).toBe(401);
+
+      // Device 1 should still be authorized
+      const checkDevice1 = await request(app)
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${tokenDevice1}`);
+      expect(checkDevice1.status).toBe(200);
+
+      // Sessions list should now only contain 1 session
+      const sessionsRes = await request(app)
+        .get('/api/users/sessions')
+        .set('Authorization', `Bearer ${tokenDevice1}`);
+      expect(sessionsRes.body.sessions.length).toBe(1);
+    });
+  });
 });

@@ -81,6 +81,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -104,4 +114,6 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:${{ secrets.TEST_DB_PASSWORD }}@localhost:5432/searchy_test
           JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
         run: npm run test

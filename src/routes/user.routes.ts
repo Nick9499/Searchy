@@ -6,11 +6,13 @@ import {
   forgotPassword,
   getMe,
   googleSignIn,
+  listSessions,
   login,
   logout,
   logoutAll,
   resendOtp,
   resetPassword,
+  revokeSession,
   setup2FA,
   signup,
   updateUser,
@@ -27,6 +29,7 @@ import {
   loginSchema,
   resendOtpSchema,
   resetPasswordSchema,
+  revokeSessionSchema,
   signupSchema,
   updateUserSchema,
   verify2FASchema,
@@ -79,6 +82,14 @@ router.post(
   authenticate,
   validate(disable2FASchema),
   disable2FA,
+);
+
+router.get('/sessions', authenticate, listSessions);
+router.delete(
+  '/sessions/:sessionId',
+  authenticate,
+  validate(revokeSessionSchema),
+  revokeSession,
 );
 
 export default router;

@@ -1,12 +1,7 @@
 import type { NextFunction, Response } from 'express';
-import jwt from 'jsonwebtoken';
-import { env } from '@/config/env';
-import type { AuthRequest, JwtPayload } from '@/types';
+import type { AuthRequest } from '@/types';
 import { UnauthorizedError } from '@/errors/app.error';
-import { redisClient } from '@/config/redis';
-import { db } from '@/db';
-import { users } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { getSession } from '@/services/session.service';
 
 export const authenticate = async (
   req: AuthRequest,
@@ -31,58 +26,15 @@ export const authenticate = async (
   }
 
   try {
-    if (env.NODE_ENV !== 'test') {
-      const isBlacklisted = await redisClient.exists(`blacklist:${token}`);
-      if (isBlacklisted) {
-        next(new UnauthorizedError('Token has been revoked'));
-        return;
-      }
+    const session = await getSession(token);
+
+    if (!session) {
+      next(new UnauthorizedError('Invalid or expired session'));
+      return;
     }
 
-    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
-
-    if (decoded.tokenVersion !== undefined) {
-      let currentVersion: number | null = null;
-
-      if (redisClient.status === 'ready') {
-        const cache = await redisClient.get(
-          `user_token_version:${decoded.userId}`,
-        );
-        if (cache !== null) {
-          currentVersion = Number.parseInt(cache, 10);
-        }
-      }
-
-      if (currentVersion === null) {
-        const [user] = await db
-          .select({ tokenVersion: users.tokenVersion })
-          .from(users)
-          .where(eq(users.id, decoded.userId));
-
-        if (!user) {
-          next(new UnauthorizedError('User not found'));
-          return;
-        }
-
-        currentVersion = user.tokenVersion;
-
-        if (redisClient.status === 'ready') {
-          await redisClient.set(
-            `user_token_version:${decoded.userId}`,
-            String(currentVersion),
-            'EX',
-            3600,
-          );
-        }
-      }
-
-      if (decoded.tokenVersion < currentVersion) {
-        next(new UnauthorizedError('Session has expired. Please login again'));
-        return;
-      }
-    }
-
-    req.userId = decoded.userId;
+    req.userId = session.userId;
+    req.sessionId = session.id;
     next();
   } catch {
     next(new UnauthorizedError('Invalid or expired tokens'));
