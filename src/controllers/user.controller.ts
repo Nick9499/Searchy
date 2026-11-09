@@ -11,12 +11,13 @@ import type {
   LoginInput,
   ResendOtpInput,
   ResetPasswordInput,
+  RevokeSessionInput,
   SignupInput,
   UpdateUserInput,
   Verify2FAInput,
   VerifyOtpInput,
 } from '@/validators/user.validator';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { createAndSendOtp, validateOtp } from '@/services/otp.service';
@@ -27,7 +28,6 @@ import {
   UnauthorizedError,
 } from '@/errors/app.error';
 import type { AuthRequest } from '@/types';
-import { redisClient } from '@/config/redis';
 import {
   AUTH_COOKIE_NAME,
   CLEAR_COOKIE_OPTIONS,
@@ -37,6 +37,13 @@ import {
 import { generateSecret, generateURI, verifySync } from 'otplib';
 import QRCode from 'qrcode';
 import crypto from 'node:crypto';
+import {
+  createSession,
+  destroyAllUserSessions,
+  destroySession,
+  getUserSessions,
+  revokeUserSession,
+} from '@/services/session.service';
 
 const googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
@@ -96,14 +103,8 @@ export const verifyUserOtp = async (req: Request, res: Response) => {
     })
     .where(eq(users.email, user.email));
 
-  const token = jwt.sign(
-    { userId: user.id, tokenVersion: user.tokenVersion ?? 0 },
-    env.JWT_SECRET,
-    {
-      expiresIn: '7d',
-      jwtid: crypto.randomUUID(),
-    },
-  );
+  const token = await createSession(user.id, req);
+
   res
     .cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS)
     .json({ message: 'Verification successful', token });
@@ -177,14 +178,7 @@ export const login = async (req: Request, res: Response) => {
     return;
   }
 
-  const token = jwt.sign(
-    { userId: user.id, tokenVersion: user.tokenVersion ?? 0 },
-    env.JWT_SECRET,
-    {
-      expiresIn: '7d',
-      jwtid: crypto.randomUUID(),
-    },
-  );
+  const token = await createSession(user.id, req);
 
   res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({ token });
 };
@@ -273,14 +267,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
       });
     }
 
-    const token = jwt.sign(
-      { userId: user.id, tokenVersion: user.tokenVersion ?? 0 },
-      env.JWT_SECRET,
-      {
-        expiresIn: '7d',
-        jwtid: crypto.randomUUID(),
-      },
-    );
+    const token = await createSession(user.id, req);
     res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({
       token,
       user: { id: user.id, name: user.name, email: user.email },
@@ -350,25 +337,14 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
 
 export const logout = async (req: AuthRequest, res: Response) => {
   const token =
+    req.sessionId ||
     req.cookies.token ||
     (req.headers.authorization?.startsWith('Bearer ')
       ? req.headers.authorization?.split(' ')[1]
       : null);
 
-  if (token && env.NODE_ENV !== 'test') {
-    const decoded = jwt.decode(token) as { exp?: number } | null;
-    if (decoded?.exp) {
-      const now = Math.floor(Date.now() / 1000);
-      const remainingSeconds = decoded.exp - now;
-
-      if (remainingSeconds > 0) {
-        await redisClient.setex(
-          `blacklist:${token}`,
-          remainingSeconds,
-          'revoked',
-        );
-      }
-    }
+  if (token) {
+    await destroySession(token, req.userId);
   }
 
   res.clearCookie(AUTH_COOKIE_NAME, CLEAR_COOKIE_OPTIONS);
@@ -383,20 +359,7 @@ export const logoutAll = async (req: AuthRequest, res: Response) => {
     throw new UnauthorizedError('Unauthorized');
   }
 
-  const [updatedUser] = await db
-    .update(users)
-    .set({ tokenVersion: sql`${users.tokenVersion}+1`, updatedAt: new Date() })
-    .where(eq(users.id, userId))
-    .returning({ tokenVersion: users.tokenVersion });
-
-  if (redisClient.status === 'ready') {
-    await redisClient.set(
-      `user_token_version:${userId}`,
-      String(updatedUser?.tokenVersion ?? 1),
-      'EX',
-      3600,
-    );
-  }
+  await destroyAllUserSessions(userId);
 
   res.clearCookie(AUTH_COOKIE_NAME, CLEAR_COOKIE_OPTIONS).json({
     message: 'Logged out of all devices successfully',
@@ -551,14 +514,7 @@ export const verify2FALogin = async (req: AuthRequest, res: Response) => {
     );
   }
 
-  const token = jwt.sign(
-    {
-      userId: user.id,
-      tokenVersion: user.tokenVersion ?? 0,
-    },
-    env.JWT_SECRET,
-    { expiresIn: '7d', jwtid: crypto.randomUUID() },
-  );
+  const token = await createSession(user.id, req);
 
   res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({
     token,
@@ -599,4 +555,32 @@ export const disable2FA = async (req: AuthRequest, res: Response) => {
     .where(eq(users.id, userId));
 
   res.json({ message: '2FA has been disabled successfully' });
+};
+
+export const listSessions = async (req: AuthRequest, res: Response) => {
+  if (!req.userId) {
+    throw new UnauthorizedError();
+  }
+
+  const sessions = await getUserSessions(req.userId, req.sessionId);
+  res.json({ sessions });
+};
+
+export const revokeSession = async (req: AuthRequest, res: Response) => {
+  if (!req.userId) {
+    throw new UnauthorizedError();
+  }
+
+  const { sessionId } = req.params as RevokeSessionInput;
+
+  if (!sessionId) {
+    throw new BadRequestError('Session ID is required');
+  }
+
+  const revoked = await revokeUserSession(req.userId, sessionId);
+  if (!revoked) {
+    throw new NotFoundError('Session not found');
+  }
+
+  res.json({ message: 'Session revoked successfully' });
 };

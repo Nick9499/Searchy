@@ -59,6 +59,12 @@ export const disable2FASchema = z.object({
   code: z.string().min(6, 'Current 2FA code or recovery code is required'),
 });
 
+export const revokeSessionSchema = {
+  params: z.object({
+    sessionId: z.string().min(1, 'Session ID is required'),
+  }),
+};
+
 export type SignupInput = z.infer<typeof signupSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
@@ -70,3 +76,4 @@ export type GoogleAuthInput = z.infer<typeof googleAuthSchema>;
 export type Enable2FAInput = z.infer<typeof enable2FASchema>;
 export type Verify2FAInput = z.infer<typeof verify2FASchema>;
 export type Disable2FAInput = z.infer<typeof disable2FASchema>;
+export type RevokeSessionInput = z.infer<typeof revokeSessionSchema.params>;
