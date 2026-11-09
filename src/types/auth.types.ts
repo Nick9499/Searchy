@@ -20,7 +20,6 @@ export interface SessionDeviceInfo {
 
 export interface JwtPayload {
   userId: string;
-  tokenVersion?: number;
 }
 
 export interface AuthCookies {
