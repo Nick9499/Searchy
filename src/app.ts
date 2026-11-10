@@ -13,6 +13,9 @@ import cors from 'cors';
 
 const app = express();
 
+// Trust reverse proxy (Caddy) for correct client IP and rate limiting
+app.set('trust proxy', 1);
+
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
