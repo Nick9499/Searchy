@@ -1,9 +1,5 @@
-# For IP-based testing (HTTP):
-:80 {
+# Automatic HTTPS via Let's Encrypt / ZeroSSL
+# Defaults to searchy-api.duckdns.org, overridable via DOMAIN in .env
+{$DOMAIN:searchy-api.duckdns.org} {
     reverse_proxy app:5000
 }
-
-# When you point a domain name to your EC2 IP, uncomment this block for automatic HTTPS/SSL:
-# api.yourdomain.com {
-#     reverse_proxy app:5000
-# }
