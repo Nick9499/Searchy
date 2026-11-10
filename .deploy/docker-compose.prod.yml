@@ -18,10 +18,7 @@ services:
     # Note: 6379 is not exposed to internet for security. Only the 'app' container accesses it.
 
   app:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-      target: prod
+    image: ghcr.io/nick9499/searchy:latest
     restart: always
     environment:
       NODE_ENV: production
