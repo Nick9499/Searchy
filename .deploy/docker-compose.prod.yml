@@ -1,3 +1,9 @@
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
     image: postgres:17-alpine
@@ -8,14 +14,26 @@ services:
       POSTGRES_DB: ${DB_NAME:-searchy}
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # Note: 5432 is not exposed to internet for security. Only the 'app' container accesses it.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-searchy}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+    # Note: 5432 is not exposed to internet for security. Only internal Docker containers access it.
 
   redis:
     image: redis:7-alpine
     restart: always
     volumes:
       - redisdata:/data
-    # Note: 6379 is not exposed to internet for security. Only the 'app' container accesses it.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+    # Note: 6379 is not exposed to internet for security. Only internal Docker containers access it.
 
   app:
     image: ghcr.io/nick9499/searchy:latest
@@ -42,12 +60,22 @@ services:
       EMAIL_FROM: ${EMAIL_FROM}
       FRONTEND_URL: ${FRONTEND_URL}
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://localhost:5000/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    logging: *default-logging
 
   caddy:
     image: caddy:2-alpine
     restart: always
+    environment:
+      DOMAIN: ${DOMAIN:-searchy-api.duckdns.org}
     ports:
       - "80:80"
       - "443:443"
@@ -56,7 +84,9 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - app
+      app:
+        condition: service_healthy
+    logging: *default-logging
 
 volumes:
   pgdata:
