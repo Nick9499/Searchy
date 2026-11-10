@@ -542,6 +542,29 @@ describe('User Auth & Account Management', () => {
       expect(reuseRes.status).toBe(401);
     });
 
+    it('POST /api/users/2fa/verify - should accept code from previous 30s window (epochTolerance)', async () => {
+      const loginRes = await request(app).post('/api/users/login').send({
+        email: twoFaEmail,
+        password: 'Password123!',
+      });
+      const tempToken = loginRes.body.tempToken;
+
+      // Code from 45 seconds ago (expired on user's app, but within 60s tolerance)
+      const pastEpoch = Math.floor(Date.now() / 1000) - 45;
+      const expiredCode = generateSync({
+        secret: totpSecret,
+        epoch: pastEpoch,
+      });
+
+      const res = await request(app).post('/api/users/2fa/verify').send({
+        tempToken,
+        code: expiredCode,
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.token).toBeDefined();
+    });
+
     it('POST /api/users/2fa/disable - should disable 2FA with password and code', async () => {
       const validCode = generateSync({ secret: totpSecret });
 

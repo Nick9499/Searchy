@@ -421,6 +421,7 @@ export const enable2Fa = async (req: AuthRequest, res: Response) => {
   const { valid } = verifySync({
     token: code,
     secret: user.twoFactorSecret,
+    epochTolerance: 60,
   });
 
   if (!valid) {
@@ -480,7 +481,11 @@ export const verify2FALogin = async (req: AuthRequest, res: Response) => {
   let verified = false;
 
   if (code.length === 6 && /^\d+$/.test(code)) {
-    verified = verifySync({ token: code, secret: user.twoFactorSecret }).valid;
+    verified = verifySync({
+      token: code,
+      secret: user.twoFactorSecret,
+      epochTolerance: 60,
+    }).valid;
   }
 
   if (!verified && user.twoFactorRecoveryCodes) {
@@ -539,6 +544,7 @@ export const disable2FA = async (req: AuthRequest, res: Response) => {
   const { valid } = verifySync({
     token: code,
     secret: user.twoFactorSecret,
+    epochTolerance: 60,
   });
 
   if (!valid)
