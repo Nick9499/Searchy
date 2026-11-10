@@ -8,6 +8,7 @@ import {
 import { providerRegistry } from '@/integrations';
 import { importQueue } from '@/jobs/queue';
 import type { AuthRequest } from '@/types';
+import { isInvalidGrantError } from '@/utils/oauth';
 import type { ImportCloudItemInput } from '@/validators/integration.validator';
 import { and, eq } from 'drizzle-orm';
 import type { Response } from 'express';
@@ -96,16 +97,34 @@ export const listRemoteFiles = async (req: AuthRequest, res: Response) => {
   }
 
   const provider = providerRegistry.get(providerName);
-  const items = await provider.listItems(
-    {
-      accessToken: integrations.accessToken,
-      expiresAt: integrations.expiresAt,
-      refreshToken: integrations.refreshToken,
-    },
-    remoteFolderId,
-  );
+  try {
+    const items = await provider.listItems(
+      {
+        accessToken: integrations.accessToken,
+        expiresAt: integrations.expiresAt,
+        refreshToken: integrations.refreshToken,
+      },
+      remoteFolderId,
+    );
+    res.json({ items });
+  } catch (error: unknown) {
+    if (isInvalidGrantError(error)) {
+      await db
+        .delete(userIntegrations)
+        .where(
+          and(
+            eq(userIntegrations.userId, req.userId),
+            eq(userIntegrations.provider, providerName),
+          ),
+        );
 
-  res.json({ items });
+      throw new UnauthorizedError(
+        'Google drive connection has expired or been revoked. Please reconnect your account',
+      );
+    }
+
+    throw error;
+  }
 };
 
 export const startCloudImport = async (req: AuthRequest, res: Response) => {

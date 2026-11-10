@@ -217,6 +217,40 @@ describe('Cloud Integrations API Suite', () => {
       expect(res.body.items[1].name).toBe('Q3_Report.pdf');
     });
 
+    it('should return 401 and delete integration if token is expired or revoked (invalid_grant)', async () => {
+      const { providerRegistry } = await import('@/integrations');
+      const provider = providerRegistry.get('google');
+      const originalListItems = provider.listItems;
+
+      provider.listItems = vi.fn().mockRejectedValue({
+        response: { data: { error: 'invalid_grant' } },
+        message: 'invalid_grant',
+      });
+
+      const res = await request(app)
+        .get('/api/integrations/google/files')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(res.status).toBe(401);
+      expect(res.body.message).toContain('reconnect');
+
+      // Verify the revoked integration was deleted from database
+      const [remaining] = await db
+        .select()
+        .from(userIntegrations)
+        .where(eq(userIntegrations.userId, userId));
+      expect(remaining).toBeUndefined();
+
+      // Restore integration for subsequent tests
+      await db.insert(userIntegrations).values({
+        accessToken: 'mock_access_token_123',
+        refreshToken: 'mock_refresh_token_456',
+        provider: 'google',
+        userId,
+      });
+      provider.listItems = originalListItems;
+    });
+
     it('should return 400 or 404 if provider is not connected for this user', async () => {
       const res = await request(app)
         .get('/api/integrations/dropbox/files')
