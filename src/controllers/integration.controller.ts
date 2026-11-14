@@ -1,19 +1,21 @@
 import { db } from '@/db';
-import { userIntegrations } from '@/db/schema';
+import { userIntegrations, users } from '@/db/schema';
 import {
   BadRequestError,
+  ForbiddenError,
   NotFoundError,
   UnauthorizedError,
 } from '@/errors/app.error';
 import { providerRegistry } from '@/integrations';
 import { importQueue } from '@/jobs/queue';
-import type { AuthRequest } from '@/types';
+import { isProviderEnabledForOrg } from '@/services/organization.service';
+import type { AuthRequest, IntegrationProvider } from '@/types';
 import { isInvalidGrantError } from '@/utils/oauth';
 import type { ImportCloudItemInput } from '@/validators/integration.validator';
 import { and, eq } from 'drizzle-orm';
 import type { Response } from 'express';
 
-export const getProviderAuthUrl = (req: AuthRequest, res: Response) => {
+export const getProviderAuthUrl = async (req: AuthRequest, res: Response) => {
   if (!req.userId) {
     throw new UnauthorizedError();
   }
@@ -30,7 +32,7 @@ export const handleProviderCallback = async (
   req: AuthRequest,
   res: Response,
 ) => {
-  const providerName = String(req.params.provider);
+  const providerName = req.params.provider as IntegrationProvider;
   const code = req.query.code as string;
   const userId = req.query.state as string;
 
@@ -38,7 +40,26 @@ export const handleProviderCallback = async (
     throw new BadRequestError('Missing authorization code or state');
   }
 
+  const [user] = await db
+    .select({ orgId: users.orgId })
+    .from(users)
+    .where(eq(users.id, userId));
+
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  if (user.orgId) {
+    const isEnabled = await isProviderEnabledForOrg(user.orgId, providerName);
+    if (!isEnabled) {
+      throw new ForbiddenError(
+        `${providerName} integration is disabled for your organization. Contact your administrator`,
+      );
+    }
+  }
+
   const provider = providerRegistry.get(providerName);
+
   const tokens = await provider.exchangeCode(code);
 
   const [existing] = await db
@@ -80,6 +101,7 @@ export const listRemoteFiles = async (req: AuthRequest, res: Response) => {
   }
 
   const providerName = String(req.params.provider);
+
   const remoteFolderId = req.query.folderId as string | undefined;
 
   const [integrations] = await db
@@ -133,6 +155,7 @@ export const startCloudImport = async (req: AuthRequest, res: Response) => {
   }
 
   const providerName = String(req.params.provider);
+
   const { remoteItemId, targetFolderId } = req.body as ImportCloudItemInput;
 
   const [integration] = await db
