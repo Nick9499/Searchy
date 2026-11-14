@@ -103,7 +103,7 @@ export const verifyUserOtp = async (req: Request, res: Response) => {
     })
     .where(eq(users.email, user.email));
 
-  const token = await createSession(user.id, req);
+  const token = await createSession(user, req);
 
   res
     .cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS)
@@ -178,7 +178,7 @@ export const login = async (req: Request, res: Response) => {
     return;
   }
 
-  const token = await createSession(user.id, req);
+  const token = await createSession(user, req);
 
   res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({ token });
 };
@@ -267,7 +267,7 @@ export const googleSignIn = async (req: Request, res: Response) => {
       });
     }
 
-    const token = await createSession(user.id, req);
+    const token = await createSession(user, req);
     res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({
       token,
       user: { id: user.id, name: user.name, email: user.email },
@@ -519,7 +519,7 @@ export const verify2FALogin = async (req: AuthRequest, res: Response) => {
     );
   }
 
-  const token = await createSession(user.id, req);
+  const token = await createSession(user, req);
 
   res.cookie(AUTH_COOKIE_NAME, token, COOKIE_OPTIONS).json({
     token,
