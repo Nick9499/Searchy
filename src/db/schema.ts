@@ -14,6 +14,26 @@ export const otpPurposeEnum = pgEnum('otp_purpose', [
   'LOGIN_VERIFICATION',
 ]);
 
+export const userRoleEnum = pgEnum('user_role', [
+  'super_admin',
+  'org_admin',
+  'member',
+]);
+
+export const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000001';
+
+export const organizations = pgTable('organizations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
@@ -25,6 +45,11 @@ export const users = pgTable('users', {
   twoFactorSecret: text('two_factor_secret'),
   twoFactorEnabled: boolean('two_factor_enabled').notNull().default(false),
   twoFactorRecoveryCodes: text('two_factor_recovery_code'),
+  orgId: uuid('org_id')
+    .notNull()
+    .default(DEFAULT_ORG_ID)
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  role: userRoleEnum('role').notNull().default('member'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -85,6 +110,21 @@ export const userIntegrations = pgTable('user_integrations', {
   refreshToken: text('refresh_token'),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const orgSettings = pgTable('org_settings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orgId: uuid('org_id')
+    .notNull()
+    .unique()
+    .references(() => organizations.id, { onDelete: 'cascade' }),
+  googleDriveEnabled: boolean('google_drive_enabled').notNull().default(false),
+  createdAt: timestamp('crated_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
