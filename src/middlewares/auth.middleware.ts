@@ -1,7 +1,8 @@
 import type { NextFunction, Response } from 'express';
 import type { AuthRequest } from '@/types';
-import { UnauthorizedError } from '@/errors/app.error';
+import { ForbiddenError, UnauthorizedError } from '@/errors/app.error';
 import { getSession } from '@/services/session.service';
+import { DEFAULT_ORG_ID } from '@/db/schema';
 
 export const authenticate = async (
   req: AuthRequest,
@@ -35,8 +36,38 @@ export const authenticate = async (
 
     req.userId = session.userId;
     req.sessionId = session.id;
+    req.orgId = session.orgId ?? DEFAULT_ORG_ID;
+    req.role = session.role ?? 'member';
     next();
   } catch {
     next(new UnauthorizedError('Invalid or expired tokens'));
   }
+};
+
+export const requireSuperAdmin = (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction,
+) => {
+  if (req.role !== 'super_admin') {
+    next(new ForbiddenError('Access denied: Super Admin previleges required'));
+    return;
+  }
+  next();
+};
+
+export const requireOrgAdmin = (
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction,
+) => {
+  if (req.role !== 'org_admin' && req.role !== 'super_admin') {
+    next(
+      new ForbiddenError(
+        'Access denied: Organization Admin previleges required',
+      ),
+    );
+    return;
+  }
+  next();
 };
