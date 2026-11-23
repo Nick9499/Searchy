@@ -288,6 +288,8 @@ export const getMe = async (req: AuthRequest, res: Response) => {
       name: users.name,
       email: users.email,
       createdAt: users.createdAt,
+      role: users.role,
+      orgId: users.orgId,
     })
     .from(users)
     .where(eq(users.id, req.userId));

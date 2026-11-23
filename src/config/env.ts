@@ -33,6 +33,12 @@ const envSchema = z.object({
     .string()
     .default('http://localhost:3000/api/integrations/google/callback'),
   FRONTEND_URL: z.string().optional(),
+
+  // Loggin and Grafana Loki
+  LOG_LEVEL: z.string().default('info'),
+  LOKI_HOST: z.string().optional(),
+  LOKI_USER: z.string().optional(),
+  LOKI_PASSWORD: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

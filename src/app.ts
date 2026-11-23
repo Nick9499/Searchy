@@ -11,11 +11,15 @@ import { errorHandler } from '@/middlewares/errorhandler.middleware';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env';
 import cors from 'cors';
+import { httpLogger } from './middlewares/logging.middleware';
 
 const app = express();
 
 // Trust reverse proxy (Caddy) for correct client IP and rate limiting
 app.set('trust proxy', 1);
+
+// Mount HTTP request logger early so all requests get traced
+app.use(httpLogger);
 
 const allowedOrigins = [
   'http://localhost:5173',

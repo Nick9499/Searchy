@@ -1,6 +1,7 @@
 import { AppError } from '@/errors/app.error';
 import { env } from '@/config/env';
 import type { NextFunction, Request, Response } from 'express';
+import { logger } from '@/config/logger';
 
 export const errorHandler = (
   err: Error,
@@ -16,7 +17,7 @@ export const errorHandler = (
     return;
   }
 
-  console.error('[Unhandled Exception]:', err);
+  logger.error({ err }, 'Unhandled Exception');
 
   res.status(500).json({
     status: 'error',
