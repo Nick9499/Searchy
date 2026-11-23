@@ -5,17 +5,33 @@ import {
   SESSION_TTL_SECONDS,
   USER_SESSIONS_PREFIX,
 } from '@/constants';
-import type { SessionDeviceInfo, UserSession } from '@/types';
+import { DEFAULT_ORG_ID } from '@/db/schema';
+import type {
+  SessionDeviceInfo,
+  SessionUserData,
+  UserRole,
+  UserSession,
+} from '@/types';
 import { getClientIp, getUserAgent } from '@/utils/request';
 import type { Request } from 'express';
 import crypto from 'node:crypto';
 
 export const createSession = async (
-  userId: string,
+  user: SessionUserData | string,
   req: Request,
+  orgId?: string,
+  role?: UserRole,
 ): Promise<string> => {
   const sessionId = crypto.randomBytes(SESSION_ID_BYTES).toString('hex');
   const now = new Date().toISOString();
+
+  const userId = typeof user === 'string' ? user : user.id;
+  const resolvedOrgId =
+    typeof user === 'string'
+      ? (orgId ?? DEFAULT_ORG_ID)
+      : user.orgId || DEFAULT_ORG_ID;
+  const resolvedRole =
+    typeof user === 'string' ? (role ?? 'member') : (user.role ?? 'member');
 
   const session: UserSession = {
     id: sessionId,
@@ -24,6 +40,8 @@ export const createSession = async (
     lastActiveAt: now,
     userAgent: getUserAgent(req),
     userId,
+    orgId: resolvedOrgId,
+    role: resolvedRole,
   };
 
   await redisClient.set(

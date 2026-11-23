@@ -1,3 +1,7 @@
+export enum IntegrationProvider {
+  GOOGLE = 'google',
+}
+
 export interface OAuthErrorResponse {
   response?: {
     data?: {
