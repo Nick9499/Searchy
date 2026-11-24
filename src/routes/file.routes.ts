@@ -9,7 +9,11 @@ import {
 import { authenticate } from '@/middlewares/auth.middleware';
 import { upload } from '@/middlewares/upload.middleware';
 import { validate } from '@/middlewares/validate.middleware';
-import { uploadFileSchema } from '@/validators/storage.validator';
+import {
+  fileIdConfig,
+  searchFilesConfig,
+  uploadFileSchema,
+} from '@/validators/storage.validator';
 
 const router = Router();
 
@@ -17,7 +21,7 @@ const router = Router();
 router.use(authenticate);
 
 // 1. Search files (must be before /:id so Express doesn't treat 'search' as an ID)
-router.get('/search', searchFiles);
+router.get('/search', validate(searchFilesConfig), searchFiles);
 
 // 2. Upload file (multipart form-data with field name "file")
 router.post(
@@ -31,9 +35,9 @@ router.post(
 router.get('/', getRootFiles);
 
 // 4. Get presigned download URL
-router.get('/:id/download', getFileDownloadUrl);
+router.get('/:id/download', validate(fileIdConfig), getFileDownloadUrl);
 
 // 5. Delete a file
-router.delete('/:id', deleteFile);
+router.delete('/:id', validate(fileIdConfig), deleteFile);
 
 export default router;
