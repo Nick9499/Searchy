@@ -1,43 +1,24 @@
-import { db } from '@/db';
-import { files, folders } from '@/db/schema';
-import { NotFoundError, UnauthorizedError } from '@/errors/app.error';
+import { UnauthorizedError } from '@/errors/app.error';
 import type { AuthRequest } from '@/types';
 
 import type {
   CreateFolderInput,
+  FolderIdParamInput,
   UpdateFolderInput,
 } from '@/validators/storage.validator';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import * as folderService from '@/services/folder.service';
 import type { Response } from 'express';
 
-export const createFolder = async (req: AuthRequest, res: Response) => {
+export const createFolder = async (
+  req: AuthRequest<Record<string, never>, unknown, CreateFolderInput>,
+  res: Response,
+) => {
   if (!req.userId) {
     throw new UnauthorizedError();
   }
 
-  const { name, parentId } = req.body as CreateFolderInput;
-
-  if (parentId) {
-    const [parent] = await db
-      .select()
-      .from(folders)
-      .where(and(eq(folders.id, parentId), eq(folders.userId, req.userId)));
-
-    if (!parent) {
-      throw new NotFoundError('Parent folder not found');
-    }
-  }
-
-  const [newFolder] = await db
-    .insert(folders)
-    .values({
-      name,
-      userId: req.userId,
-      parentId,
-    })
-    .returning();
-
-  res.status(201).json({ folder: newFolder });
+  const folder = await folderService.createFolder(req.userId, req.body);
+  res.status(201).json({ folder });
 };
 
 export const getFolders = async (req: AuthRequest, res: Response) => {
@@ -45,155 +26,50 @@ export const getFolders = async (req: AuthRequest, res: Response) => {
     throw new UnauthorizedError();
   }
 
-  const userFolder = await db
-    .select()
-    .from(folders)
-    .where(
-      and(
-        eq(folders.userId, req.userId),
-        isNull(folders.deletedAt),
-        isNull(folders.parentId),
-      ),
-    );
-
-  res.json({ folders: userFolder });
+  const folders = await folderService.getUserRootFolder(req.userId);
+  res.json({ folders });
 };
 
-export const getFolderContents = async (req: AuthRequest, res: Response) => {
+export const getFolderContents = async (
+  req: AuthRequest<FolderIdParamInput>,
+  res: Response,
+) => {
   if (!req.userId) {
     throw new UnauthorizedError();
   }
 
-  const folderId = String(req.params.id);
-
-  const [folder] = await db
-    .select()
-    .from(folders)
-    .where(
-      and(
-        eq(folders.id, folderId),
-        eq(folders.userId, req.userId),
-        isNull(folders.deletedAt),
-      ),
-    );
-
-  if (!folder) {
-    throw new NotFoundError('Folder not found');
-  }
-
-  const subFolder = await db
-    .select()
-    .from(folders)
-    .where(
-      and(
-        eq(folders.parentId, folderId),
-        eq(folders.userId, req.userId),
-        isNull(folders.deletedAt),
-      ),
-    );
-
-  const folderFiles = await db
-    .select()
-    .from(files)
-    .where(
-      and(
-        eq(files.folderId, folderId),
-        eq(files.userId, req.userId),
-        isNull(files.deletedAt),
-      ),
-    );
-
-  res.json({
-    folder,
-    subFolder,
-    files: folderFiles,
-  });
+  const content = await folderService.getFolderContents(
+    req.userId,
+    req.params.id,
+  );
+  res.json(content);
 };
 
-export const updateFolder = async (req: AuthRequest, res: Response) => {
+export const updateFolder = async (
+  req: AuthRequest<FolderIdParamInput, unknown, UpdateFolderInput>,
+  res: Response,
+) => {
   if (!req.userId) {
     throw new UnauthorizedError();
   }
 
-  const id = String(req.params.id);
-  const { name } = req.body as UpdateFolderInput;
+  const folder = await folderService.updateFolder(
+    req.userId,
+    req.params.id,
+    req.body,
+  );
 
-  const [updated] = await db
-    .update(folders)
-    .set({
-      name,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(folders.id, id),
-        eq(folders.userId, req.userId),
-        isNull(folders.deletedAt),
-      ),
-    )
-    .returning();
-
-  if (!updated) {
-    throw new NotFoundError('Folder not found');
-  }
-
-  res.json({ folder: updated });
+  res.json({ folder });
 };
 
-export const deleteFolder = async (req: AuthRequest, res: Response) => {
+export const deleteFolder = async (
+  req: AuthRequest<FolderIdParamInput>,
+  res: Response,
+) => {
   if (!req.userId) {
     throw new UnauthorizedError();
   }
 
-  const folderId = String(req.params.id);
-
-  const [folder] = await db
-    .select()
-    .from(folders)
-    .where(
-      and(
-        eq(folders.id, folderId),
-        eq(folders.userId, req.userId),
-        isNull(folders.deletedAt),
-      ),
-    );
-
-  if (!folder) {
-    throw new NotFoundError('Folder not found');
-  }
-
-  const allFolderIds: string[] = [folderId];
-  let currentParentIds = [folderId];
-
-  while (currentParentIds.length > 0) {
-    const subFolders = await db
-      .select({ id: folders.id })
-      .from(folders)
-      .where(
-        and(
-          isNull(folders.deletedAt),
-          inArray(folders.parentId, currentParentIds),
-        ),
-      );
-
-    if (subFolders.length === 0) break;
-
-    const subIds = subFolders.map((f) => f.id);
-    allFolderIds.push(...subIds);
-    currentParentIds = subIds;
-  }
-
-  const now = new Date();
-
-  await db
-    .update(files)
-    .set({ deletedAt: now, updatedAt: now })
-    .where(and(isNull(files.deletedAt), inArray(files.folderId, allFolderIds)));
-
-  await db
-    .update(folders)
-    .set({ deletedAt: now, updatedAt: now })
-    .where(inArray(folders.id, allFolderIds));
-
-  res.json({ message: 'Folders and its content moved to trash' });
+  const result = await folderService.deleteFolder(req.userId, req.params.id);
+  res.json(result);
 };

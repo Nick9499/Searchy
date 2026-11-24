@@ -26,8 +26,22 @@ export const restoreTrashSchema = z.object({
   }),
 });
 
+export const folderIdParamSchema = z.object({
+  id: z.uuid('Invalid folder ID'),
+});
+
+export const folderIdConfig = {
+  params: folderIdParamSchema,
+};
+
+export const updateFolderConfig = {
+  params: folderIdParamSchema,
+  body: updateFolderSchema,
+};
+
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type UpdateFolderInput = z.infer<typeof updateFolderSchema>;
 export type UploadFileInput = z.infer<typeof uploadFileSchema>;
 export type SearchFilesInput = z.infer<typeof searchFilesSchema>;
 export type RestoreTrashInput = z.infer<typeof restoreTrashSchema>;
+export type FolderIdParamInput = z.infer<typeof folderIdParamSchema>;
