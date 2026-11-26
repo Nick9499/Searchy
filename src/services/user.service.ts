@@ -186,7 +186,7 @@ export const forgotUserPassword = async (email: string) => {
     .limit(1);
 
   if (user) {
-    createAndSendOtp(email, 'RESET_PASSWORD');
+    await createAndSendOtp(email, 'RESET_PASSWORD');
   }
 
   return {
