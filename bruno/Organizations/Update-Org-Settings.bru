@@ -1,0 +1,21 @@
+meta {
+  name: Update Organization Settings
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/admin/organizations/00000000-0000-0000-0000-000000000001/settings
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "googleDriveEnabled": true
+  }
+}

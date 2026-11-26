@@ -1,0 +1,26 @@
+meta {
+  name: Assign User to Organization
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/admin/organizations/:orgId/users
+  body: json
+  auth: bearer
+}
+
+params:path {
+  orgId: 00000000-0000-0000-0000-000000000001
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "userId": "paste-user-uuid-here",
+    "role": "org_admin"
+  }
+}
