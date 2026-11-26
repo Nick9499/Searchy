@@ -4,6 +4,7 @@ import {
   disable2FA,
   enable2Fa,
   forgotPassword,
+  getHandshake,
   getMe,
   googleSignIn,
   listSessions,
@@ -39,6 +40,8 @@ import { authLimiter } from '@/middlewares/rateLimiter.middleware';
 import { verifyBotProtection } from '@/middlewares/botProtection.middleware';
 
 const router = Router();
+
+router.get('/handshake', getHandshake);
 
 router.post(
   '/signup',
