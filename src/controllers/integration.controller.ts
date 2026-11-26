@@ -41,7 +41,7 @@ export const handleProviderCallback = async (
     userId,
   );
 
-  res.json({ result });
+  res.json(result);
 };
 
 export const listRemoteFiles = async (

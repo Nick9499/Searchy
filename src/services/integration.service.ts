@@ -84,7 +84,7 @@ export const handleProviderCallback = async (
     });
   }
 
-  return { message: `Successfully conected ${providerName}!` };
+  return { message: `Successfully connected ${providerName}!` };
 };
 
 export const listRemoteFiles = async (

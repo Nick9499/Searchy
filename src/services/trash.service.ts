@@ -17,8 +17,8 @@ export const getUserTrash = async (userId: string) => {
     .where(and(eq(files.userId, userId), isNotNull(files.deletedAt)));
 
   return {
-    trashedFolders,
-    trashedFiles,
+    folders: trashedFolders,
+    files: trashedFiles,
   };
 };
 

@@ -2,7 +2,9 @@ import { IntegrationProvider } from '@/types';
 import z from 'zod';
 
 export const providerParamSchema = z.object({
-  provider: z.enum(IntegrationProvider),
+  provider: z.enum(IntegrationProvider, {
+    error: (issue) => `Provider '${String(issue.input)}' is not supported`,
+  }),
 });
 
 export const providerParamConfig = {
@@ -10,8 +12,12 @@ export const providerParamConfig = {
 };
 
 export const providerCallbackQuerySchema = z.object({
-  code: z.string().min(1, 'Missing authorization code'),
-  state: z.string().min(1, 'Missing state parameter'),
+  code: z
+    .string({ error: 'Missing authorization code' })
+    .min(1, 'Missing authorization code'),
+  state: z
+    .string({ error: 'Missing state parameter' })
+    .min(1, 'Missing state parameter'),
 });
 
 export const providerCallbackConfig = {

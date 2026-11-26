@@ -24,9 +24,7 @@ export const validate = (
       }
 
       if (config.query) {
-        req.query = (await config.query.parseAsync(
-          req.query,
-        )) as Request['query'];
+        (await config.query.parseAsync(req.query)) as Request['query'];
       }
 
       if (config.body) {

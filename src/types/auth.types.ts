@@ -50,3 +50,8 @@ export interface SessionUserData {
   orgId?: string | null;
   role?: UserRole | null;
 }
+
+export interface VerifyPayload {
+  userId: string;
+  is2FAPending?: boolean;
+}
