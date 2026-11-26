@@ -10,7 +10,8 @@ import { authenticate } from '@/middlewares/auth.middleware';
 import { validate } from '@/middlewares/validate.middleware';
 import {
   createFolderSchema,
-  updateFolderSchema,
+  folderIdConfig,
+  updateFolderConfig,
 } from '@/validators/storage.validator';
 
 const router = Router();
@@ -25,12 +26,12 @@ router.post('/', validate(createFolderSchema), createFolder);
 router.get('/', getFolders);
 
 // 3. Get specific folder contents (files & subfolders)
-router.get('/:id', getFolderContents);
+router.get('/:id', validate(folderIdConfig), getFolderContents);
 
 // 4. Rename a folder
-router.patch('/:id', validate(updateFolderSchema), updateFolder);
+router.patch('/:id', validate(updateFolderConfig), updateFolder);
 
 // 5. Delete a folder (cascades to files & S3)
-router.delete('/:id', deleteFolder);
+router.delete('/:id', validate(folderIdConfig), deleteFolder);
 
 export default router;

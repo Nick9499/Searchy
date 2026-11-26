@@ -26,8 +26,40 @@ export const restoreTrashSchema = z.object({
   }),
 });
 
+export const folderIdParamSchema = z.object({
+  id: z.uuid('Invalid folder ID'),
+});
+
+export const folderIdConfig = {
+  params: folderIdParamSchema,
+};
+
+export const updateFolderConfig = {
+  params: folderIdParamSchema,
+  body: updateFolderSchema,
+};
+
+export const fileIdParamSchema = z.object({
+  id: z.uuid('Invalid file ID'),
+});
+
+export const fileIdConfig = {
+  params: fileIdParamSchema,
+};
+
+export const searchFilesQuerySchema = z.object({
+  query: z.string().min(1, 'Search query is required'),
+});
+
+export const searchFilesConfig = {
+  query: searchFilesQuerySchema,
+};
+
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
 export type UpdateFolderInput = z.infer<typeof updateFolderSchema>;
 export type UploadFileInput = z.infer<typeof uploadFileSchema>;
 export type SearchFilesInput = z.infer<typeof searchFilesSchema>;
 export type RestoreTrashInput = z.infer<typeof restoreTrashSchema>;
+export type FolderIdParamInput = z.infer<typeof folderIdParamSchema>;
+export type FileIdParamInput = z.infer<typeof fileIdParamSchema>;
+export type searchFilesQueryInput = z.infer<typeof searchFilesQuerySchema>;
