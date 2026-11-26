@@ -28,7 +28,7 @@ export const DEVICE_TRUST_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 export const DEVICE_TRUST_COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
-  sameSite: 'lax',
+  sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
   maxAge: DEVICE_TRUST_TTL_SECONDS * 1000,
 };
 
