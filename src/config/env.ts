@@ -39,6 +39,9 @@ const envSchema = z.object({
   LOKI_HOST: z.string().optional(),
   LOKI_USER: z.string().optional(),
   LOKI_PASSWORD: z.string().optional(),
+
+  // Cloudflare Turnstile (CAPTCHA)
+  TURNSTILE_SECRET_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse(process.env);

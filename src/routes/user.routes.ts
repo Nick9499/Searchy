@@ -36,21 +36,42 @@ import {
   verifyOtpSchema,
 } from '@/validators/user.validator';
 import { authLimiter } from '@/middlewares/rateLimiter.middleware';
+import { verifyBotProtection } from '@/middlewares/botProtection.middleware';
 
 const router = Router();
 
-router.post('/signup', authLimiter, validate(signupSchema), signup);
-router.post('/login', authLimiter, validate(loginSchema), login);
+router.post(
+  '/signup',
+  authLimiter,
+  verifyBotProtection,
+  validate(signupSchema),
+  signup,
+);
+router.post(
+  '/login',
+  authLimiter,
+  verifyBotProtection,
+  validate(loginSchema),
+  login,
+);
 router.post(
   '/verify-otp',
   authLimiter,
+  verifyBotProtection,
   validate(verifyOtpSchema),
   verifyUserOtp,
 );
-router.post('/resend-otp', authLimiter, validate(resendOtpSchema), resendOtp);
+router.post(
+  '/resend-otp',
+  authLimiter,
+  verifyBotProtection,
+  validate(resendOtpSchema),
+  resendOtp,
+);
 router.post(
   '/forgot-password',
   authLimiter,
+  verifyBotProtection,
   validate(forgotPasswordSchema),
   forgotPassword,
 );
