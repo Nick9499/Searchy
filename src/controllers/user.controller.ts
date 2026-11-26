@@ -25,6 +25,7 @@ import {
   AUTH_COOKIE_NAME,
   CLEAR_COOKIE_OPTIONS,
   COOKIE_OPTIONS,
+  DEVICE_TRUST_COOKIE_NAME,
 } from '@/constants';
 import {
   destroyAllUserSessions,
@@ -33,6 +34,11 @@ import {
   revokeUserSession,
 } from '@/services/session.service';
 import * as userService from '@/services/user.service';
+import {
+  issueHandshakeNonce,
+  verifyDeviceTrustToken,
+} from '@/services/botProtection.service';
+import { getUserAgent } from '@/utils/request';
 
 const _googleClient = new OAuth2Client(env.GOOGLE_CLIENT_ID);
 
@@ -251,4 +257,20 @@ export const revokeSession = async (req: AuthRequest, res: Response) => {
   }
 
   res.json({ message: 'Session revoked successfully' });
+};
+
+export const getHandshake = async (req: AuthRequest, res: Response) => {
+  const nonce = await issueHandshakeNonce();
+
+  const trustCookie = req.cookies?.[DEVICE_TRUST_COOKIE_NAME];
+  const isTrustedDevices =
+    typeof trustCookie === 'string' &&
+    verifyDeviceTrustToken(trustCookie, getUserAgent(req));
+
+  const requiresCaptcha =
+    Boolean(env.TURNSTILE_SECRET_KEY) &&
+    env.NODE_ENV !== 'test' &&
+    !isTrustedDevices;
+
+  res.json({ nonce, requiresCaptcha });
 };

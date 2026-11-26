@@ -22,3 +22,18 @@ export const CLEAR_COOKIE_OPTIONS: CookieOptions = {
 
 export const PERIODIC_VERIFICATION_DAYS = 30;
 export const JWT_EXPIRY = '7d';
+
+export const DEVICE_TRUST_COOKIE_NAME = 'searchy-device-trust';
+export const DEVICE_TRUST_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+export const DEVICE_TRUST_COOKIE_OPTIONS: CookieOptions = {
+  httpOnly: true,
+  secure: env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  maxAge: DEVICE_TRUST_TTL_SECONDS * 1000,
+};
+
+export const HANDSHAKE_NONCE_PREFIX = 'handshake:';
+export const HANDSHAKE_NONCE_TTL_SECONDS = 120;
+
+export const TURNSTILE_VERIFY_URL =
+  'https://challenges.cloudflare.com/turnstile/v0/siteverify';

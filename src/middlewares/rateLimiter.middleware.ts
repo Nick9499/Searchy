@@ -4,7 +4,7 @@ const shouldSkip = process.env.NODE_ENV !== 'production';
 
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 100,
+  limit: 300,
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => shouldSkip,
@@ -16,7 +16,7 @@ export const apiLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 5,
+  limit: 20,
   standardHeaders: true,
   legacyHeaders: false,
   skip: () => shouldSkip,

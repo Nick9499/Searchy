@@ -67,6 +67,7 @@ services:
       LOKI_HOST: ${LOKI_HOST}
       LOKI_USER: ${LOKI_USER}
       LOKI_PASSWORD: ${LOKI_PASSWORD}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
     depends_on:
       db:
         condition: service_healthy

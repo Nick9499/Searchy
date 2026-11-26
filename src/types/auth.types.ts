@@ -55,3 +55,13 @@ export interface VerifyPayload {
   userId: string;
   is2FAPending?: boolean;
 }
+
+export interface DeviceTrustPayload {
+  trusted: boolean;
+  ua: string;
+}
+
+export interface TurnstileVerifyResponse {
+  success: boolean;
+  'error-codes'?: string[];
+}
