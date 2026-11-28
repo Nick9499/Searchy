@@ -68,6 +68,8 @@ services:
       LOKI_USER: ${LOKI_USER}
       LOKI_PASSWORD: ${LOKI_PASSWORD}
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GOOGLE_GENERATIVE_AI_API_KEY}
+      TAVILY_API_KEY: ${TAVILY_API_KEY}
     depends_on:
       db:
         condition: service_healthy

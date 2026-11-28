@@ -5,6 +5,7 @@ import fileRouter from '@/routes/file.routes';
 import trashRouter from '@/routes/trash.routes';
 import integrationRouter from '@/routes/integration.routes';
 import adminOrgRouter from '@/routes/organization.routes';
+import chatRouter from '@/routes/chat.routes';
 import { apiLimiter } from '@/middlewares/rateLimiter.middleware';
 import { ensureBucketExists } from '@/services/storage.service';
 import { errorHandler } from '@/middlewares/errorhandler.middleware';
@@ -69,6 +70,7 @@ app.use('/api/files', fileRouter);
 app.use('/api/trash', trashRouter);
 app.use('/api/integrations', integrationRouter);
 app.use('/api/admin/organizations', adminOrgRouter);
+app.use('/api/chat', chatRouter);
 
 // Global Error handler must be the last middleware mounted
 app.use(errorHandler);
